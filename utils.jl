@@ -13,10 +13,10 @@ function gaspari_cohn(r)::Float64
 end
 
 
-function cal_rho(loc_rad::Float64, num_states::Int, f, Nx, Ny, Lx, Ly)::Matrix{Float64}
+function cal_rho(loc_rad::Float64, num_states::Int, f, N, Lx, Ly)::Matrix{Float64}
 
-    x = LinRange(0.0, Lx, Nx)
-    y = LinRange(0.0, Ly, Ny)
+    x = LinRange(0.0, Lx, N)
+    y = LinRange(0.0, Ly, N)
 
     X = [x for _ in y, x in x]
     Y = [y for y in y, _ in x]

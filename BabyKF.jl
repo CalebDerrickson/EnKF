@@ -16,6 +16,8 @@ function BabyKF(xf, y, H, R, infl, rho, observe_index, localize=false)
         rhoPH = rho[:, observe_index]
         rhoHPHt = rho[observe_index, observe_index]
     else
+        # Implement VecchiaMLE here. H is the linear mapping from state space to observation locations (xyGrid -> ptGrid). 
+        #n = cld(sqrt(N)), k = 10, samples = ensemble (xf), number_of_samples, ptGrid  
         rhoPH = ones(num_states, num_observation)
         rhoHPHt = ones(num_observation, num_observation)
     end
