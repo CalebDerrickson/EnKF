@@ -1,4 +1,5 @@
 using LinearAlgebra, Statistics, Distributions
+using VecchiaMLE
 
 include("utils.jl")
 include("BabyKF.jl")

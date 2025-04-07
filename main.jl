@@ -1,3 +1,4 @@
+
 function main()
 
     # Grid parameters
@@ -80,7 +81,7 @@ function main()
         y = H * reshape(u, N*N, 1); # this can be non-linearized
     
         # Do the analysis
-        temp_analysis = BabyKF(xf, y, H, R, infl, rho, observe_index, false);
+        temp_analysis = BabyKF(xf, y, H, R, infl, rho, observe_index, true);
         temp_analysis_mean = mean(temp_analysis, dims=2);
     
         rms_value = sqrt(((norm(temp_analysis_mean - reshape(u, N*N,1), 2)).^2 +
