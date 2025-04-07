@@ -29,6 +29,7 @@ function main()
     X = [x for _ in y, x in x]
     Y = [y for y in y, _ in x]
     XYGrid = [X[:], Y[:]]
+
     centers = [0.25, 0.25]
     u = exp.(-100*((X .- centers[1]).^2 .+ (Y .- centers[2]).^2))
     
@@ -42,9 +43,6 @@ function main()
         xf[:, i] = reshape(exp.(-50*((X .- c_ensemble[1, i]).^2 + (Y .- c_ensemble[2, i]).^2)), N*N, 1) 
     end
 
-    # Not used?
-    # xfm = mean(xf, 2) 
-
     # Observation
     observe_index = 1:25:N * N
     H = Matrix{Float64}(I, N*N, N*N)
@@ -52,8 +50,6 @@ function main()
     sigma = 0.01
     R = (sigma^2) * I(size(H, 1));
     
-    # Not used?
-    # sqrtR = cholesky(R).L
 
     infl = 1.01
     rms_value = 0
@@ -68,8 +64,6 @@ function main()
     
         # propogate the "truth"
         u = forward_euler(u, N, dx, dy, dt, cx, cy, nu);
-
-        #u = reshape(u, N, N);
     
         # propogate each ensembles through the model for one time step
         for j = 1:N
@@ -81,7 +75,7 @@ function main()
         y = H * reshape(u, N*N, 1); # this can be non-linearized
     
         # Do the analysis
-        temp_analysis = BabyKF(xf, y, H, R, infl, rho, observe_index, true);
+        temp_analysis = BabyKF(xf, y, H, R, infl, rho, observe_index, false);
         temp_analysis_mean = mean(temp_analysis, dims=2);
     
         rms_value = sqrt(((norm(temp_analysis_mean - reshape(u, N*N,1), 2)).^2 +
