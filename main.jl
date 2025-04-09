@@ -1,6 +1,29 @@
+using Plots
+using Random
+using DelimitedFiles
+using LinearAlgebra
 
 function main()
 
+    Random.seed!(1234)
+    dt = 0.001
+    T = 2.0
+    Nt = Int(T * 1.0/dt)
+    k = 2
+    lines = zeros(2, Nt)
+    lines[1, :] = DoAnalysis(Nt, true, k)
+    lines[2, :] = DoAnalysis(Nt, false, k)
+
+
+
+    outfile = "results1.csv"
+    writeddlm(outfile, lines, ',')
+    #lines = readdlm(outfile, ',')
+
+    plotting(lines, k)
+end
+
+function DoAnalysis(Nt, localize::Bool, k)
     # Grid parameters
     N = 50
     N = 50
@@ -12,9 +35,7 @@ function main()
     
     # Time parameters
     dt = 0.001
-    T = 2.0
-    Nt = round(T * 1.0/dt)
-    
+    res = zeros(Nt)
     
     # Physical parameters
     cx = 1.0
@@ -75,11 +96,32 @@ function main()
         y = H * reshape(u, N*N, 1); # this can be non-linearized
     
         # Do the analysis
-        temp_analysis = BabyKF(xf, y, H, R, infl, rho, observe_index, false);
+        temp_analysis = BabyKF(xf, y, H, R, infl, rho, observe_index, localize, k);
         temp_analysis_mean = mean(temp_analysis, dims=2);
     
-        rms_value = sqrt(((norm(temp_analysis_mean - reshape(u, N*N,1), 2)).^2 +
+        res[i] = sqrt(((norm(temp_analysis_mean - reshape(u, N*N,1), 2)).^2 +
             (rms_value^2)*(i-1)*length(reshape(u, N*N,1)))/(i*length(reshape(u, N*N,1))));
-        println("Step = $i, rms = $(rms_value)");
+        println("Step = $i, rms = $(res[i])");
+
     end
+
+    return res
+end    
+
+function plotting(res::AbstractMatrix, k::Int)
+    len = size(res, 2)
+    it = 1
+    labels = ["Localize", "VecchiaMLE"]
+    p = plot()
+    for row in eachrow(res)
+        plot!(p, 1:len, row, label=labels[it])
+        it+=1
+    end
+
+    xlabel!("Iteration")
+    ylabel!("RMSE")
+    title!("Vecchia Neighbors = $(k)")
+    plot!(yscale=:log10)
+    display(p)
+
 end

@@ -1,12 +1,12 @@
-function BabyKF(xf, y, H, R, infl, rho, observe_index::AbstractVector, localize=false)
+function BabyKF(xf, y, H, R, infl, rho, observe_index::AbstractVector, localize, k)
     num_states, N = size(xf)
     num_observation = size(y, 1)
 
     # Since Julia 0.7 sqrt of a matrix is sqrtm in Matlab
     y_perturbed = repeat(y, 1, N) + sqrt.(R) * randn(num_observation, N)
 
-    #xfm = mean(xf, dims=2)
-    #xf_dev = (1 / sqrt(N-1)) * (xf - repeat(xfm, 1, N))
+    xfm = mean(xf, dims=2)
+    xf_dev = (1 / sqrt(N-1)) * (xf - repeat(xfm, 1, N))
     #xf = sqrt(N - 1) * infl * xf_dev + repeat(xfm, 1, N)
 
     observable = H * xf
@@ -23,15 +23,8 @@ function BabyKF(xf, y, H, R, infl, rho, observe_index::AbstractVector, localize=
         K = (rhoHPHt .* (Zb * Zb') + R) \ inn
         xa = xf + rhoPH .* (xf_dev * Zb') * K
 
-
-        println("Zb size: ", size(Zb))
-        println("R size: ", size(R))
-        println("inn size: ", size(inn))
-        println("K size: ", size(K))
-        println("H size: ", size(H))
-
     else
-        verbose=false
+        
 
         xf_mat = Matrix{Float64}(xf')
         n = Int(sqrt(size(xf_mat, 2)))
@@ -39,11 +32,13 @@ function BabyKF(xf, y, H, R, infl, rho, observe_index::AbstractVector, localize=
 
 
         ptGrid = VecchiaMLE.generate_safe_xyGrid(n)
-        input = VecchiaMLEInput(n, 4, xf_mat, Number_of_Samples, 5, 1; ptGrid=ptGrid)
-        _, L = VecchiaMLE_Run(input)
-        L_inv = inv(L)
+        input = VecchiaMLEInput(n, k, xf_mat, Number_of_Samples, 5, 1; ptGrid=ptGrid)
+        d, L = VecchiaMLE_Run(input)
         R_inv = inv(R)
         #println("L cond: ", cond(L))
+
+        #println("constraint: ", d.normed_constraint_value)
+        #println("gradient: ", d.normed_grad_value)
 
         temp = zeros(N^2, N^2)
         t1 = H' * R_inv * H
@@ -53,7 +48,7 @@ function BabyKF(xf, y, H, R, infl, rho, observe_index::AbstractVector, localize=
         # Inner part of the Kalman filter product
         # I.e., ( Rₖ - Hₖ(Bₖ⁻¹ + HₖᵀRₖ⁻¹Hₖ)⁻¹Hₖᵀ )
         # The inv() is really ugly, and needs to be changed.
-        inner = H * inv(L*L' + t1) * H'
+        inner = H * ((L*L' + t1) \ H')
         inner .= R - inner
         #println("inner cond after inverse: ", cond(inner))
         
@@ -70,16 +65,14 @@ function BabyKF(xf, y, H, R, infl, rho, observe_index::AbstractVector, localize=
 
         view(outer, observe_index, :) .= inner
 
-        outer = L_inv * outer 
-        outer = L_inv' * outer 
+        outer = L \ outer
+        outer = L' \ outer 
         
         K = outer
         #println("K cond: ", cond(K))
 
         # now to apply the Kalman filter
         xa = xf + K * inn
-
-        
     end
     
 
