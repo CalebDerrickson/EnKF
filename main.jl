@@ -2,24 +2,24 @@ using Plots
 using Random
 using DelimitedFiles
 using LinearAlgebra
+using PProf
 
 function main()
 
-    Random.seed!(1234)
+    Random.seed!(1729)
     dt = 0.001
-    T = 2.0
+    T = 0.001
     Nt = Int(T * 1.0/dt)
     k = 2
     lines = zeros(2, Nt)
-    lines[1, :] = DoAnalysis(Nt, true, k)
+    #lines[1, :] = DoAnalysis(Nt, true, k)
     lines[2, :] = DoAnalysis(Nt, false, k)
 
 
 
-    outfile = "results1.csv"
-    writeddlm(outfile, lines, ',')
-    #lines = readdlm(outfile, ',')
-
+    outfile = "results_neighbors_$(k).csv"
+    #writedlm(outfile, lines[2, :], ',')
+    
     plotting(lines, k)
 end
 
@@ -66,15 +66,15 @@ function DoAnalysis(Nt, localize::Bool, k)
 
     # Observation
     observe_index = 1:25:N * N
-    H = Matrix{Float64}(I, N*N, N*N)
-    H = H[observe_index, :]
+    H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
     sigma = 0.01
-    R = (sigma^2) * I(size(H, 1));
-    
+    #R = (sigma^2) * I(size(H, 1));
+    R = Diagonal(fill(sigma^2, size(H, 1)))
 
     infl = 1.01
     rms_value = 0
 
+    ptGrid = VecchiaMLE.generate_safe_xyGrid(N)
     localization_radius = 0.3
     rho = cal_rho(localization_radius, N*N, gaspari_cohn, N, Lx, Ly)
     # iterate over time
@@ -96,7 +96,7 @@ function DoAnalysis(Nt, localize::Bool, k)
         y = H * reshape(u, N*N, 1); # this can be non-linearized
     
         # Do the analysis
-        temp_analysis = BabyKF(xf, y, H, R, infl, rho, observe_index, localize, k);
+        temp_analysis = BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, localize, k);
         temp_analysis_mean = mean(temp_analysis, dims=2);
     
         res[i] = sqrt(((norm(temp_analysis_mean - reshape(u, N*N,1), 2)).^2 +
