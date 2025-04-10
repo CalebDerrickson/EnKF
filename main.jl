@@ -3,21 +3,22 @@ using Random
 using DelimitedFiles
 using LinearAlgebra
 using PProf
+using VecchiaMLE
 
 function main()
-
-    Random.seed!(1729)
+    seed = 1729
+    Random.seed!(seed)
     dt = 0.001
-    T = 0.001
+    T = 2.0
     Nt = Int(T * 1.0/dt)
-    k = 2
+    k = 1
     lines = zeros(2, Nt)
     #lines[1, :] = DoAnalysis(Nt, true, k)
     lines[2, :] = DoAnalysis(Nt, false, k)
 
 
 
-    outfile = "results_neighbors_$(k).csv"
+    outfile = "results_neighbors_$(k)_seed_$(seed).csv"
     #writedlm(outfile, lines[2, :], ',')
     
     plotting(lines, k)
