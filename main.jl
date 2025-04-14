@@ -9,19 +9,24 @@ function main()
     seed = 1729
     Random.seed!(seed)
     dt = 0.001
-    T = 2.0
+    T = 0.01
     Nt = Int(T * 1.0/dt)
-    k = 1
-    lines = zeros(2, Nt)
-    #lines[1, :] = DoAnalysis(Nt, true, k)
-    lines[2, :] = DoAnalysis(Nt, false, k)
-
-
-
-    outfile = "results_neighbors_$(k)_seed_$(seed).csv"
-    #writedlm(outfile, lines[2, :], ',')
     
-    plotting(lines, k)
+    ks = 1:10
+    
+    lines = zeros(1+length(ks), Nt)
+    lines[1, :] = DoAnalysis(Nt, true, ks[1])
+    
+    for k in ks
+        lines[k+1, :] = DoAnalysis(Nt, false, k)
+    end
+
+
+    outfile = "results_seed_$(seed).csv"
+    writedlm(outfile, lines, ',')
+    #lines = readdlm(outfile, ',')
+
+    plotting(lines, ks)
 end
 
 function DoAnalysis(Nt, localize::Bool, k)
@@ -109,20 +114,23 @@ function DoAnalysis(Nt, localize::Bool, k)
     return res
 end    
 
-function plotting(res::AbstractMatrix, k::Int)
+function plotting(res::AbstractMatrix, ks)
     len = size(res, 2)
     it = 1
-    labels = ["Localize", "VecchiaMLE"]
+    labels = ["Localize"]
+    for k in 1:4
+        push!(labels, "k = $(k)" )
+    end
     p = plot()
-    for row in eachrow(res)
-        plot!(p, 1:len, row, label=labels[it])
+    for row in 1:4
+        plot!(p, 1:len, res[row, :], label=labels[it])
         it+=1
     end
 
     xlabel!("Iteration")
     ylabel!("RMSE")
-    title!("Vecchia Neighbors = $(k)")
-    plot!(yscale=:log10)
+    title!("Vecchia Neighbors")
+    plot!(yscale=:log10, legend=:outerbottom, legendcolumns=3)
     display(p)
 
 end
