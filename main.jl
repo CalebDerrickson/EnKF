@@ -6,7 +6,7 @@ using PProf
 using VecchiaMLE
 
 function main()
-    seed = 1729
+    seed = 8001
     Random.seed!(seed)
     dt = 0.001
     T = 0.01
@@ -18,7 +18,7 @@ function main()
     lines[1, :] = DoAnalysis(Nt, true, ks[1])
     
     for k in ks
-        lines[k+1, :] = DoAnalysis(Nt, false, k)
+        lines[k+1, :] = DoAnalysis(Nt, false, k+3)
     end
 
 
@@ -32,8 +32,8 @@ end
 function DoAnalysis(Nt, localize::Bool, k)
     # Grid parameters
     N = 100
-    Lx = 1.0
-    Ly = 1.0
+    Lx = 4.0
+    Ly = 4.0
     dx = Lx / (N - 1)
     dy = Ly / (N - 1)
 
