@@ -1,9 +1,10 @@
-using Plots
+using Plots, PlotlyJS
 using Random
 using DelimitedFiles
 using LinearAlgebra
 using PProf
 using VecchiaMLE
+using SparseArrays
 
 function main()
     seed = 8001
@@ -18,15 +19,15 @@ function main()
     lines[1, :] = DoAnalysis(Nt, true, ks[1])
     
     for k in ks
-        lines[k+1, :] = DoAnalysis(Nt, false, k+3)
+        lines[k+1, :] = DoAnalysis(Nt, false, k)
     end
 
 
     outfile = "results_seed_$(seed).csv"
     writedlm(outfile, lines, ',')
     #lines = readdlm(outfile, ',')
-
-    plotting(lines, ks)
+    
+    #plotting(lines, ks)
 end
 
 function DoAnalysis(Nt, localize::Bool, k)
@@ -69,7 +70,7 @@ function DoAnalysis(Nt, localize::Bool, k)
     end
 
     # Observation
-    observe_index = 1:25:N * N
+    observe_index = 1:cld(N*N, 100):N * N
     H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
     sigma = 0.01
     #R = (sigma^2) * I(size(H, 1));
@@ -78,6 +79,8 @@ function DoAnalysis(Nt, localize::Bool, k)
     infl = 1.01
     rms_value = 0.0
 
+    #rep = zeros(N*N, length(observe_index))
+    #L = zeros(N*N, N*N)
     ptGrid = VecchiaMLE.generate_safe_xyGrid(N)
     localization_radius = 0.3
     rho = cal_rho(localization_radius, N*N, gaspari_cohn, N, Lx, Ly)
@@ -92,23 +95,23 @@ function DoAnalysis(Nt, localize::Bool, k)
     
         # propogate each ensembles through the model for one time step
         for j = 1:N
-            temp = forward_euler(xf[:, j], N, dx, dy, dt, cx, cy, nu);
-            xf[:, j] = reshape(temp, N*N, 1);
+            temp = forward_euler(view(xf, :, j), N, dx, dy, dt, cx, cy, nu);
+            xf[:, j] .= reshape(temp, N*N, 1);
         end
     
         # create observations based around the truth
-        y = H * reshape(u, N*N, 1); # this can be non-linearized
-    
+        y = view(reshape(u, N*N, 1), observe_index, :); # this can be non-linearized
+
         # Do the analysis
-        temp_analysis = BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, localize, k);
+        temp_analysis = BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, localize, k)#, rep, L);
         temp_analysis_mean = mean(temp_analysis, dims=2);
     
-        res[i] = sqrt(((norm(temp_analysis_mean - reshape(u, N*N,1), 2)).^2 +
-            (rms_value^2)*(i-1)*length(reshape(u, N*N,1)))/(i*length(reshape(u, N*N,1))));
-        println("Step = $i, rms = $(res[i])");
-
+        res[i] = sqrt((((norm(temp_analysis_mean - reshape(u, N*N,1),2))^2) + (i == 1 ? 0.0 : res[i-1]^2)*(i-1)*length(reshape(u, N*N,1)))/(i*length(reshape(u, N*N,1))))
+        println("Step = $i, rms = $(res[i])");    
+        #fill!(rep, 0.0)
+        #fill!(L, 0.0)
     end
-
+    
     return res
 end    
 
@@ -132,3 +135,4 @@ function plotting(res::AbstractMatrix, ks)
     display(p)
 
 end
+
