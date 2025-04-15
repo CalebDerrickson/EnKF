@@ -7,13 +7,13 @@ using VecchiaMLE
 using SparseArrays
 
 function main()
-    seed = 8001
+    seed = 7373
     Random.seed!(seed)
     dt = 0.001
     T = 0.01
     Nt = Int(T * 1.0/dt)
     
-    ks = 1:10
+    ks = 1:5
     
     lines = zeros(1+length(ks), Nt)
     lines[1, :] = DoAnalysis(Nt, true, ks[1])
@@ -105,7 +105,7 @@ function DoAnalysis(Nt, localize::Bool, k)
         temp_analysis = BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, localize, k, rep, L);
         temp_analysis_mean = mean(temp_analysis, dims=2);
     
-        res[i] = sqrt((((norm(temp_analysis_mean - reshape(u, N*N,1),2))^2) + (0.0)*(i-1)*length(reshape(u, N*N,1)))/(i*length(reshape(u, N*N,1))))
+        res[i] = (1/N) * norm(temp_analysis_mean .- reshape(u, N*N,1))
         println("Step = $i, rms = $(res[i])");    
         fill!(rep, 0.0)
         fill!(L, 0.0)
