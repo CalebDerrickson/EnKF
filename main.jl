@@ -31,8 +31,7 @@ end
 
 function DoAnalysis(Nt, localize::Bool, k)
     # Grid parameters
-    N = 50
-    N = 50
+    N = 100
     Lx = 1.0
     Ly = 1.0
     dx = Lx / (N - 1)
@@ -58,10 +57,9 @@ function DoAnalysis(Nt, localize::Bool, k)
     XYGrid = [X[:], Y[:]]
 
     centers = [0.25, 0.25]
-    u = exp.(-100*((X .- centers[1]).^2 .+ (Y .- centers[2]).^2))
+    u = exp.(-100.0.*((X .- centers[1]).^2 .+ (Y .- centers[2]).^2))
     
     # Initialize the ensembles
-    N = 50
     c_ensemble = [0.25; 0.25] .+ 0.1 * randn(2, N)
 
     xf = zeros(N*N, N)
@@ -78,7 +76,7 @@ function DoAnalysis(Nt, localize::Bool, k)
     R = Diagonal(fill(sigma^2, size(H, 1)))
 
     infl = 1.01
-    rms_value = 0
+    rms_value = 0.0
 
     ptGrid = VecchiaMLE.generate_safe_xyGrid(N)
     localization_radius = 0.3

@@ -8,6 +8,11 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
     xf_dev = (1 / sqrt(N-1)) * (xf - repeat(xfm, 1, N))
     xf = sqrt(N - 1) * infl * xf_dev + repeat(xfm, 1, N)
 
+    # Have to transpose them since that's how VecciaMLE parses them. 
+    xf_mat = Matrix{Float64}(xf')
+    xfm = mean(xf_mat, dims = 2)
+    xf_mat .-= repeat(xfm, 1, num_states)
+
     observable = xf[observe_index, :]
     inn = y_perturbed - observable
     
@@ -24,20 +29,19 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
 
     else
 
-        xf_mat = Matrix{Float64}(xf')
+        
         n = Int(sqrt(size(xf_mat, 2)))
         
         # Idea is making the samples mean zero. Seems better, but idk how it changes the calculations
-        #xfm = mean(xf_mat, dims = 2)
-        #xf_mat .-= repeat(xfm, 1, num_states)
+
         
         input = VecchiaMLEInput(n, k, xf_mat, N, 5, 1; ptGrid=ptGrid)
-        #d , L = VecchiaMLE_Run(input)
-        L = Matrix{Float64}(I, N*N, N*N)
-        #println("\ngradient: ", d.normed_grad_value)
-        #println("constran: ", d.normed_constraint_value)
-        #println("argmax: ", argmax(L), "indmax: ", L[argmax(L)])
+        d , L = VecchiaMLE_Run(input)
 
+        println("\ngradient: ", d.normed_grad_value)
+        println("constran: ", d.normed_constraint_value)
+        println("argmax: ", argmax(L), "indmax: ", L[argmax(L)])
+        
         t1 = H' * (R \ H)
 
         # Inner part of the Kalman filter product
