@@ -1,4 +1,4 @@
-function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::AbstractVector, localize, k)#, rep, L)
+function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::AbstractVector, localize, k, rep, L)
     num_states, N = size(xf) # 2500 x 50 
     num_observation = size(y, 1)
 
@@ -33,13 +33,13 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
         n = Int(sqrt(size(xf_mat, 2)))
 
         input = VecchiaMLEInput(n, k, xf_mat, N, 5, 1; ptGrid=ptGrid)
-        d, L = VecchiaMLE_Run(input)
+        L .= VecchiaMLE_Run(input)[2]
         
-        println("\ngradient: ", d.normed_grad_value)
-        println("constran: ", d.normed_constraint_value)
-        println("argmax: ", argmax(L), "indmax: ", L[argmax(L)])
+        #println("\ngradient: ", d.normed_grad_value)
+        #println("constran: ", d.normed_constraint_value)
+        #println("argmax: ", argmax(L), "indmax: ", L[argmax(L)])
         
-        rep = L' \ (L \ H')
+        rep .= L' \ (L \ H')
         xf_mat .+= (rep * ((view(rep, observe_index, :).+R) \ inn))'
         return xf_mat'
         #temp = spzeros(N*N, N*N)
