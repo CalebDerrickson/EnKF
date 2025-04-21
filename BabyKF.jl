@@ -38,10 +38,12 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
         #println("\ngradient: ", d.normed_grad_value)
         #println("constran: ", d.normed_constraint_value)
         #println("argmax: ", argmax(L), "indmax: ", L[argmax(L)])
-        
+
         rep .= L' \ (L \ H')
         xf_mat .+= (rep * ((view(rep, observe_index, :).+R) \ inn))'
         return xf_mat'
+
+
         #temp = spzeros(N*N, N*N)
         ## Sherman Morrison Woodburry on Kalman filter
         #view(temp, observe_index, observe_index) .= spdiagm(0 => 1.0 ./ diag(R))

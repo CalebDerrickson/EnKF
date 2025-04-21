@@ -7,19 +7,19 @@ using VecchiaMLE
 using SparseArrays
 
 function main()
-    seed = 7373
+    seed = 6513
     Random.seed!(seed)
     dt = 0.001
-    T = 0.01
+    T = 0.1
     Nt = Int(T * 1.0/dt)
     
-    ks = 1:5
+    ks = 1:10
     
     lines = zeros(1+length(ks), Nt)
-    lines[1, :] = DoAnalysis(Nt, true, ks[1])
+    lines[1, :] = DoAnalysis(Nt, true, ks[1], dt)
     
     for k in ks
-        lines[k+1, :] = DoAnalysis(Nt, false, k)
+        lines[k+1, :] = DoAnalysis(Nt, false, k, dt)
     end
 
 
@@ -30,7 +30,9 @@ function main()
     #plotting(lines, ks)
 end
 
-function DoAnalysis(Nt, localize::Bool, k)
+function DoAnalysis(Nt, localize::Bool, k, dt)
+
+    
     # Grid parameters
     N = 100
     Lx = 4.0
@@ -40,7 +42,6 @@ function DoAnalysis(Nt, localize::Bool, k)
 
     
     # Time parameters
-    dt = 0.001
     res = zeros(Nt)
     
     # Physical parameters
@@ -106,7 +107,12 @@ function DoAnalysis(Nt, localize::Bool, k)
         temp_analysis_mean = mean(temp_analysis, dims=2);
     
         res[i] = (1/N) * norm(temp_analysis_mean .- reshape(u, N*N,1))
+        
+        open("EnKF_output.txt","a") do io
+            println(io, "$(localize ? 0 : k),$i,$(res[i])");    
+        end
         println("Step = $i, rms = $(res[i])");    
+        
         fill!(rep, 0.0)
         fill!(L, 0.0)
     end
