@@ -1,5 +1,6 @@
 using LinearAlgebra, Statistics, Distributions
 using VecchiaMLE
+using DifferentialEquations
 
 include("utils.jl")
 include("BabyKF.jl")

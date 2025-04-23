@@ -27,3 +27,49 @@ function forward_euler(u, N, dx, dy, dt, cx, cy, nu)
     u_new[:, N] = u_new[:, 2]; # Top boundary wraps to 2
     return u_new
 end
+
+
+
+
+
+
+
+
+
+function advection_diffusion!(du, u, p, t)
+    @assert size(du) == size(u)
+    N, dx, dy, cx, cy, nu = p.N, p.dx, p.dy, p.cx, p.cy, p.nu
+    U = reshape(u, N, N)
+    # reuse a preallocated buffer:
+    p.dU .= 0.0
+
+    for i in 2:N-1, j in 2:N-1
+        adv_x = -cx*(U[i,j] - U[i-1,j]) / dx
+        adv_y = -cy*(U[i,j] - U[i,j-1]) / dy
+        diff_x =  nu*(U[i+1,j] - 2U[i,j] + U[i-1,j]) / dx^2
+        diff_y =  nu*(U[i,j+1] - 2U[i,j] + U[i,j-1]) / dy^2
+        p.dU[i,j] = adv_x + adv_y + diff_x + diff_y
+    end
+
+    # periodic boundaries
+    p.dU[1, :] .= p.dU[N-1, :]
+    p.dU[N, :] .= p.dU[2, :]
+    p.dU[:, 1] .= p.dU[:, N-1]
+    p.dU[:, N] .= p.dU[:, 2]
+
+    #println("dU size: ", size(p.dU))
+    #println("du size: ", size(du))
+    if size(du) != size(p.dU)
+        du .= reshape(p.dU, N*N, 1)
+    else
+        du .= p.dU
+    end
+end
+
+# Helper to step one dt
+function propagate_one_step!(u0, integrator)
+    set_u0!(integrator, u0)
+    reinit!(integrator)
+    step!(integrator)
+    return integrator.u
+end

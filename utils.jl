@@ -35,3 +35,13 @@ function cal_rho(loc_rad::Float64, num_states::Int, f, N, Lx, Ly)::Matrix{Float6
     end
     return rho
 end
+
+struct ADParams
+    N::Int               # grid size in each direction
+    dx::Float64          # grid spacing in x
+    dy::Float64          # grid spacing in y
+    cx::Float64          # advection speed in x
+    cy::Float64          # advection speed in y
+    nu::Float64          # diffusion coefficient
+    dU::Matrix{Float64}  # pre‐allocated N×N buffer for ∂U/∂t
+end

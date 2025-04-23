@@ -6,25 +6,28 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
 
     xfm = mean(xf, dims=2)
     xf_dev = (1 / sqrt(N-1)) * (xf - repeat(xfm, 1, N))
-    #xf = sqrt(N - 1) * infl * xf_dev + repeat(xfm, 1, N)
+    xf = sqrt(N - 1) * infl * xf_dev + repeat(xfm, 1, N)
 
     # Have to transpose them since that's how VecciaMLE parses them. 
     xf_mat = Matrix{Float64}(xf')
     xfm = mean(xf_mat, dims = 2)
     xf_mat .-= repeat(xfm, 1, num_states)
 
-    inn = y_perturbed .- view(xf, observe_index, :)
+    inn = y_perturbed .- view(xf_mat', observe_index, :)
     
     if localize
+        xf_mat = xf_mat'
         rhoPH = rho[:, observe_index]
         rhoHPHt = rho[observe_index, observe_index]
 
-        zb = xf[observe_index, :]
+        zb = xf_mat[observe_index, :]
         zbm = mean(zb, dims=2) 
         Zb = (1 / sqrt(N - 1)) * (zb .- repeat(zbm, 1, N))
 
         K = (rhoHPHt .* (Zb * Zb') + R) \ inn
-        xf .+= rhoPH .* (xf_dev * Zb') * K
+        xf_mat .+= rhoPH .* (xf_dev * Zb') * K
+
+        return xf_mat
 
     else
         # First check rank of samples matrix
@@ -32,7 +35,7 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
         
         n = Int(sqrt(size(xf_mat, 2)))
 
-        input = VecchiaMLEInput(n, k, xf_mat, N, 5, 1; ptGrid=ptGrid)
+        input = VecchiaMLEInput(n, k, xf_mat, N, 3, 1; ptGrid=ptGrid)
         L .= VecchiaMLE_Run(input)[2]
         
         #println("\ngradient: ", d.normed_grad_value)
@@ -63,6 +66,6 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
         #xf .+= K * inn 
     end
     
-    return xf
+    
 end
 
