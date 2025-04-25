@@ -33,7 +33,7 @@ end
 
 function DoAnalysis(Nt, localize::Bool, k, dt)
     # Grid and physical setup
-    N = 100
+    N = 50
     Lx, Ly = 10.0, 10.0
     dx, dy = Lx / (N - 1), Ly / (N - 1)
     cx, cy, nu = 1.0, 1.0, 0.01
@@ -47,12 +47,12 @@ function DoAnalysis(Nt, localize::Bool, k, dt)
     XYGrid = [X[:], Y[:]]
 
     # Initial truth
-    centers = [0.25, 0.25]
+    centers = [Lx / 2, Ly / 2]
     u = exp.(-100 .* ((X .- centers[1]).^2 .+ (Y .- centers[2]).^2))
 
     # Initial ensemble
     Ne = N  # ensemble size
-    c_ensemble = [0.25; 0.25] .+ 0.1 .* randn(2, N*N)
+    c_ensemble = rand(2, N*N) .* [Lx; Ly]
     xf = zeros(N*N, Ne)
 
     for i in 1:Ne
@@ -77,25 +77,23 @@ function DoAnalysis(Nt, localize::Bool, k, dt)
 
     # Setup truth propagation
     p_truth = ADParams(N, dx, dy, cx, cy, nu, zeros(N,N))
-    prob_truth = ODEProblem(advection_diffusion!, u, (0.0, dt), p_truth)
-    int_truth = init(prob_truth, Tsit5(), reltol=1e-6, abstol=1e-8, save_everystep=false)
+    prob_truth = ODEProblem(advection_diffusion!, u, (0.0, Nt*dt), p_truth)
+    int_truth = init(prob_truth, Tsit5(), dt=dt, adaptive=false, save_everystep=false)
 
     # Setup ensemble propagation
     p_ens = ADParams(N, dx, dy, cx, cy, nu, zeros(N,N))
-    prob_ens = ODEProblem(advection_diffusion!, zeros(N*N), (0.0, dt), p_ens)
-    int_ens = init(prob_ens, Tsit5(), reltol=1e-6, abstol=1e-8, save_everystep=false)
+    prob_ens = ODEProblem(advection_diffusion!, zeros(N*N), (0.0, Nt*dt), p_ens)
+    int_ens = init(prob_ens, Tsit5(), dt=dt, adaptive=false, save_everystep=false)
 
     for i = 1:Nt
         # Propagate truth
-        set_u!(int_truth, u)
-        reinit!(int_truth)
+        reinit!(int_truth, u)
         step!(int_truth)
         u .= int_truth.u
 
         # Propagate ensembles
         for j in 1:Ne
-            set_u!(int_ens, xf[:, j])
-            reinit!(int_ens)
+            reinit!(int_ens, xf[:, j])
             step!(int_ens)
             xf[:, j] .= int_ens.u
         end
@@ -106,7 +104,7 @@ function DoAnalysis(Nt, localize::Bool, k, dt)
         # Do the EnKF analysis
         temp_analysis = BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, localize, k, rep, L)
         temp_analysis_mean = mean(temp_analysis, dims=2)
-        xf .= temp_analysis  # update ensemble
+        #xf .= temp_analysis  # update ensemble
 
         # Compute and save RMS error
         res[i] = (1 / N) * norm(temp_analysis_mean .- reshape(u, N*N, 1))

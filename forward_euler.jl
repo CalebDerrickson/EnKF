@@ -57,19 +57,10 @@ function advection_diffusion!(du, u, p, t)
     p.dU[:, 1] .= p.dU[:, N-1]
     p.dU[:, N] .= p.dU[:, 2]
 
-    #println("dU size: ", size(p.dU))
-    #println("du size: ", size(du))
+
     if size(du) != size(p.dU)
         du .= reshape(p.dU, N*N, 1)
     else
         du .= p.dU
     end
-end
-
-# Helper to step one dt
-function propagate_one_step!(u0, integrator)
-    set_u0!(integrator, u0)
-    reinit!(integrator)
-    step!(integrator)
-    return integrator.u
 end

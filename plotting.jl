@@ -3,7 +3,7 @@ using Plots
 function main()
     max_iter = 25
     len = 100
-    ks = 1:10
+    ks = 1:2
     lines = zeros(length(ks)+1, len)
     input = readdlm("EnKF_output.txt", ',')
     titles = ["localize"]
