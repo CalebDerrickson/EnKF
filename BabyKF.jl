@@ -6,7 +6,7 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
 
     xfm = mean(xf, dims=2)
     xf_dev = (1 / sqrt(N-1)) * (xf - repeat(xfm, 1, N))
-    #xf = sqrt(N - 1) * infl * xf_dev + repeat(xfm, 1, N)
+    xf = sqrt(N - 1) * infl * xf_dev + repeat(xfm, 1, N)
 
     # Have to transpose them since that's how VecciaMLE parses them. 
     xf_mat = Matrix{Float64}(xf')
@@ -14,7 +14,8 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
     xf_mat .-= repeat(xfm, 1, num_states)
 
     inn = y_perturbed .- view(xf, observe_index, :)
-    
+    println("Ensemble rank: ", rank(xf_mat))
+
     if localize
         rhoPH = rho[:, observe_index]
         rhoHPHt = rho[observe_index, observe_index]
@@ -32,7 +33,7 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
         
         n = Int(sqrt(size(xf_mat, 2)))
 
-        input = VecchiaMLEInput(n, k, xf_mat, N, 5, 1; ptGrid=ptGrid)
+        input = VecchiaMLEInput(n, k, xf_mat, N, 3, 1; ptGrid=ptGrid)
         L .= VecchiaMLE_Run(input)[2]
         
         #println("\ngradient: ", d.normed_grad_value)
