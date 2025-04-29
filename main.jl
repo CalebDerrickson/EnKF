@@ -1,10 +1,11 @@
-using Plots, PlotlyJS
+using Plots
 using Random
 using DelimitedFiles
 using LinearAlgebra
 using PProf
 using VecchiaMLE
 using SparseArrays
+
 
 function main()
     seed = 6513
@@ -16,10 +17,10 @@ function main()
     ks = 1:10
     
     lines = zeros(1+length(ks), Nt)
-    lines[1, :] = DoAnalysis(Nt, true, ks[1], dt)
+    lines[1, :] .= DoAnalysis(Nt, true, ks[1], dt)
     
     for k in ks
-        lines[k+1, :] = DoAnalysis(Nt, false, k, dt)
+        lines[k+1, :] .= DoAnalysis(Nt, false, k, dt)
     end
 
 
@@ -31,94 +32,94 @@ function main()
 end
 
 function DoAnalysis(Nt, localize::Bool, k, dt)
-
-    
-    # Grid parameters
-    N = 100
-    Lx = 4.0
-    Ly = 4.0
-    dx = Lx / (N - 1)
-    dy = Ly / (N - 1)
-
-    
-    # Time parameters
+    # Grid and physical setup
+    N = 50
+    Lx, Ly = 10.0, 10.0
+    dx, dy = Lx / (N - 1), Ly / (N - 1)
+    cx, cy, nu = 1.0, 1.0, 0.01
     res = zeros(Nt)
-    
-    # Physical parameters
-    cx = 1.0
-    cy = 1.0
-    nu = 0.01
-    
 
-    # create Grid
+    # Generate grid
     x = LinRange(0.0, Lx, N)
     y = LinRange(0.0, Ly, N)
-
     X = [x for _ in y, x in x]
     Y = [y for y in y, _ in x]
     XYGrid = [X[:], Y[:]]
 
-    centers = [0.25, 0.25]
-    u = exp.(-100.0.*((X .- centers[1]).^2 .+ (Y .- centers[2]).^2))
-    
-    # Initialize the ensembles
-    c_ensemble = [0.25; 0.25] .+ 0.1 * randn(2, N)
+    # Initial truth
+    centers = [Lx / 2, Ly / 2]
+    u = exp.(-100 .* ((X .- centers[1]).^2 .+ (Y .- centers[2]).^2))
 
-    xf = zeros(N*N, N)
+    # Initial ensemble
+    Ne = N  # ensemble size
+    c_ensemble = rand(2, N*N) .* [Lx; Ly]
+    xf = zeros(N*N, Ne)
 
-    for i in 1:N
-        xf[:, i] = reshape(exp.(-50*((X .- c_ensemble[1, i]).^2 + (Y .- c_ensemble[2, i]).^2)), N*N, 1) 
+    for i in 1:Ne
+        xc, yc = c_ensemble[1, i], c_ensemble[2, i]
+        gaussian = exp.(-50 .* ((X .- xc).^2 .+ (Y .- yc).^2))
+        xf[:, i] = reshape(gaussian, N*N)
     end
 
-    # Observation
-    observe_index = 1:cld(N*N, 100):N * N
-    H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
+    # Observations
+    observe_index = 1:cld(N*N, 100):N*N
     sigma = 0.01
-    #R = (sigma^2) * I(size(H, 1));
-    R = Diagonal(fill(sigma^2, size(H, 1)))
+    R = Diagonal(fill(sigma^2, length(observe_index)))
+    H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
 
+    # Covariance localization
     infl = 1.01
-
-    rep = zeros(N*N, length(observe_index))
-    L = zeros(N*N, N*N)
-    ptGrid = VecchiaMLE.generate_safe_xyGrid(N)
     localization_radius = 0.3
     rho = cal_rho(localization_radius, N*N, gaspari_cohn, N, Lx, Ly)
-    # iterate over time
-    for i = 1:Nt
-        # this is a twin experiment where we assume we have the "truth" and we
-        # compare that with the analysis. "Truth" trajectory might not be
-        # available in real life scenarios
-    
-        # propogate the "truth"
-        u = forward_euler(u, N, dx, dy, dt, cx, cy, nu);
-    
-        # propogate each ensembles through the model for one time step
-        for j = 1:N
-            temp = forward_euler(view(xf, :, j), N, dx, dy, dt, cx, cy, nu);
-            xf[:, j] .= reshape(temp, N*N, 1);
-        end
-    
-        # create observations based around the truth
-        y = view(reshape(u, N*N, 1), observe_index, :); # this can be non-linearized
+    rep = zeros(N*N, length(observe_index))
+    L = zeros(N*N, N*N)
+    ptGrid = [col for col in eachcol(c_ensemble)]
 
-        # Do the analysis
-        temp_analysis = BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, localize, k, rep, L);
-        temp_analysis_mean = mean(temp_analysis, dims=2);
-    
-        res[i] = (1/N) * norm(temp_analysis_mean .- reshape(u, N*N,1))
-        
-        open("EnKF_output.txt","a") do io
-            println(io, "$(localize ? 0 : k),$i,$(res[i])");    
+    # Setup truth propagation
+    p_truth = ADParams(N, dx, dy, cx, cy, nu, zeros(N,N))
+    prob_truth = ODEProblem(advection_diffusion!, u, (0.0, Nt*dt), p_truth)
+    int_truth = init(prob_truth, Tsit5(), dt=dt, adaptive=false, save_everystep=false)
+
+    # Setup ensemble propagation
+    p_ens = ADParams(N, dx, dy, cx, cy, nu, zeros(N,N))
+    prob_ens = ODEProblem(advection_diffusion!, zeros(N*N), (0.0, Nt*dt), p_ens)
+    int_ens = init(prob_ens, Tsit5(), dt=dt, adaptive=false, save_everystep=false)
+
+    for i = 1:Nt
+        # Propagate truth
+        reinit!(int_truth, u)
+        step!(int_truth)
+        u .= int_truth.u
+
+        # Propagate ensembles
+        for j in 1:Ne
+            reinit!(int_ens, xf[:, j])
+            step!(int_ens)
+            xf[:, j] .= int_ens.u
         end
-        println("Step = $i, rms = $(res[i])");    
-        
+
+        # Observation vector from truth
+        y = view(reshape(u, N*N, 1), observe_index, :)
+
+        # Do the EnKF analysis
+        temp_analysis = BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, localize, k, rep, L)
+        temp_analysis_mean = mean(temp_analysis, dims=2)
+        #xf .= temp_analysis  # update ensemble
+
+        # Compute and save RMS error
+        res[i] = (1 / N) * norm(temp_analysis_mean .- reshape(u, N*N, 1))
+
+        open("EnKF_output.txt", "a") do io
+            println(io, "$(localize ? 0 : k),$i,$(res[i])")
+        end
+        println("Step = $i, rms = $(res[i])")
+
         fill!(rep, 0.0)
         fill!(L, 0.0)
     end
-    
+
     return res
-end    
+end
 
 function plotting(res::AbstractMatrix, ks)
     len = size(res, 2)
