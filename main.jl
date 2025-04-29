@@ -20,7 +20,7 @@ function main()
     lines[1, :] .= DoAnalysis(Nt, true, ks[1], dt)
     
     for k in ks
-        lines[k+1, :] .= DoAnalysis(Nt, false, k, dt)
+        lines[k+1, :] .= DoAnalysis(Nt, false, k+1, dt)
     end
 
 
@@ -33,8 +33,8 @@ end
 
 function DoAnalysis(Nt, localize::Bool, k, dt)
     # Grid and physical setup
-    N = 50
-    Lx, Ly = 10.0, 10.0
+    N = 51
+    Lx, Ly = 1.0, 1.0
     dx, dy = Lx / (N - 1), Ly / (N - 1)
     cx, cy, nu = 1.0, 1.0, 0.01
     res = zeros(Nt)
@@ -51,8 +51,9 @@ function DoAnalysis(Nt, localize::Bool, k, dt)
     u = exp.(-100 .* ((X .- centers[1]).^2 .+ (Y .- centers[2]).^2))
 
     # Initial ensemble
-    Ne = N  # ensemble size
-    c_ensemble = rand(2, N*N) .* [Lx; Ly]
+    Ne = 100  # ensemble size
+    # these centers needs to be on the grid, should be random indices, and then centers would be XYGrid[RandomIndices]. 
+    c_ensemble = [Lx; Ly] .+ 0.1 .* rand(2, N*N)
     xf = zeros(N*N, Ne)
 
     for i in 1:Ne
@@ -62,7 +63,7 @@ function DoAnalysis(Nt, localize::Bool, k, dt)
     end
 
     # Observations
-    observe_index = 1:cld(N*N, 100):N*N
+    observe_index = 1:cld(N*N, 25):N*N  
     sigma = 0.01
     R = Diagonal(fill(sigma^2, length(observe_index)))
     H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
@@ -73,6 +74,7 @@ function DoAnalysis(Nt, localize::Bool, k, dt)
     rho = cal_rho(localization_radius, N*N, gaspari_cohn, N, Lx, Ly)
     rep = zeros(N*N, length(observe_index))
     L = zeros(N*N, N*N)
+
     ptGrid = [col for col in eachcol(c_ensemble)]
 
     # Setup truth propagation
@@ -99,11 +101,11 @@ function DoAnalysis(Nt, localize::Bool, k, dt)
         end
 
         # Observation vector from truth
-        y = view(reshape(u, N*N, 1), observe_index, :)
-
+        y = reshape(u, N*N, 1)[observe_index, :]
+        
         # Do the EnKF analysis
-        temp_analysis = BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, localize, k, rep, L)
-        temp_analysis_mean = mean(temp_analysis, dims=2)
+        BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, localize, k, rep, L)
+        temp_analysis_mean = mean(xf, dims=2)
         #xf .= temp_analysis  # update ensemble
 
         # Compute and save RMS error

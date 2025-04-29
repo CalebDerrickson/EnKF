@@ -57,7 +57,7 @@ function advection_diffusion!(du, u, p, t)
     p.dU[:, 1] .= p.dU[:, N-1]
     p.dU[:, N] .= p.dU[:, 2]
 
-
+    # for the different problems (u, xf), the sizes will need to be changed. 
     if size(du) != size(p.dU)
         du .= reshape(p.dU, N*N, 1)
     else

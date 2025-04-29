@@ -2,7 +2,7 @@
 
 julia_version = "1.11.4"
 manifest_format = "2.0"
-project_hash = "a506f73b898fab440b102d0986edf5269166aaa0"
+project_hash = "abd52f3a05f866d25aeaf3db534c68842ea5b8b1"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e2478490447631aedba0823d4d7a80b2cc8cdb32"
@@ -2876,7 +2876,7 @@ uuid = "41fe7b60-77ed-43a1-b4f0-825fd5a5650d"
 version = "0.2.0"
 
 [[deps.VecchiaMLE]]
-deps = ["AdaptiveKDTrees", "BesselK", "CUDA", "Distributions", "KernelAbstractions", "LinearAlgebra", "MadNLP", "MadNLPGPU", "MadNLPHSL", "NLPModels", "SparseArrays", "SpecialFunctions", "Statistics"]
+deps = ["AdaptiveKDTrees", "BesselK", "CUDA", "Distributions", "HSL_jll", "KernelAbstractions", "LinearAlgebra", "MadNLP", "MadNLPGPU", "MadNLPHSL", "NLPModels", "SparseArrays", "SpecialFunctions", "Statistics"]
 path = "../VecchiaMLE.jl"
 uuid = "499233a1-c46f-47cc-ab67-5a37788e9870"
 version = "0.1.0"
