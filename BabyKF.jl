@@ -11,7 +11,7 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
     #xf .= sqrt(N - 1) * sqrt(infl) * xf_dev + repeat(xfm, 1, N)
     
     # Using inn as the observed update of kalman filter
-    inn = y_perturbed .- xf[observe_index, :]
+    inn = y_perturbed .- view(xf, observe_index, :)
 
     if localize
         rhoPH = rho[:, observe_index]
@@ -29,7 +29,7 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
     else
         # Have to transpose them since that's how VecciaMLE parses them. 
         xf_mat = Matrix{Float64}(xf')
-        xfm = mean(xf_mat, dims = 2)
+        xfm = mean(xf_mat, dims = 2) # mean by row. 
         xf_mat .-= repeat(xfm, 1, num_states)
         
         n = Int(sqrt(size(xf_mat, 2)))
@@ -42,7 +42,7 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
         #println("cons: ", d.normed_constraint_value)
         
         rep .= L' \ (L \ H')
-        xf .+= rep * ((rep[observe_index, :].+R) \ inn)
+        xf .+= rep * ((view(rep, observe_index, :).+R) \ inn)
         return
     end
     

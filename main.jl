@@ -23,18 +23,12 @@ function main()
         lines[k+1, :] .= DoAnalysis(Nt, false, k, dt)
     end
 
-
-    outfile = "results_seed_$(seed).csv"
-    writedlm(outfile, lines, ',')
-    #lines = readdlm(outfile, ',')
-    
-    #plotting(lines, ks)
 end
 
 function DoAnalysis(Nt, localize::Bool, k, dt)
     # Grid and physical setup
     N = 50
-    Lx, Ly = 4.0, 4.0
+    Lx, Ly = 10.0, 10.0#6.0, 6.0
     dx, dy = Lx / (N - 1), Ly / (N - 1)
     cx, cy, nu = 1.0, 1.0, 0.01
     res = zeros(Nt)
@@ -53,8 +47,13 @@ function DoAnalysis(Nt, localize::Bool, k, dt)
     # Initial ensemble
     Ne = 100  # ensemble size
     # these centers needs to be on the grid, should be random indices, and then centers would be XYGrid[RandomIndices]. 
-    c_ensemble = [Lx; Ly] .+ 0.1 .* rand(2, N*N)
+    c_ensemble = [Lx/2; Ly/2] .+ 0.1 .* randn(2, N*N)
     xf = zeros(N*N, Ne)
+    ptGrid = [col for col in eachcol(c_ensemble)]
+
+    # Generate a covariance matrix for the xf noise distrubition.
+    #MatCov = VecchiaMLE.generate_MatCov(N, [5.0, 0.2, 2.25, 0.25], ptGrid)
+    #xf = VecchiaMLE.generate_Samples(MatCov, N, Ne; mode = VecchiaMLE.cpu)'
 
     for i in 1:Ne
         xf[:, i] .= reshape(u.+ 0.1.*randn(size(u)), N*N, 1)
@@ -73,7 +72,7 @@ function DoAnalysis(Nt, localize::Bool, k, dt)
     rep = zeros(N*N, length(observe_index))
     L = zeros(N*N, N*N)
 
-    ptGrid = [col for col in eachcol(c_ensemble)]
+    
 
     # Setup truth propagation
     p_truth = ADParams(N, dx, dy, cx, cy, nu, zeros(N,N))
@@ -119,25 +118,3 @@ function DoAnalysis(Nt, localize::Bool, k, dt)
 
     return res
 end
-
-function plotting(res::AbstractMatrix, ks)
-    len = size(res, 2)
-    it = 1
-    labels = ["Localize"]
-    for k in 1:4
-        push!(labels, "k = $(k)" )
-    end
-    p = plot()
-    for row in 1:4
-        plot!(p, 1:len, res[row, :], label=labels[it])
-        it+=1
-    end
-
-    xlabel!("Iteration")
-    ylabel!("RMSE")
-    title!("Vecchia Neighbors")
-    plot!(yscale=:log10, legend=:outerbottom, legendcolumns=3)
-    display(p)
-
-end
-

@@ -26,7 +26,7 @@ function main()
         i+=1
     end
     plot!(yscale=:log10, minorgrid=true)
-    ylims!(0.004, 0.01)
+    #ylims!(0.004, 0.01)
     #title!("max_iter: $(max_iter)")
     ylabel!("RMSE")
     xlabel!("Time step")
