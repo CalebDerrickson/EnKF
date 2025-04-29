@@ -20,7 +20,7 @@ function main()
     lines[1, :] .= DoAnalysis(Nt, true, ks[1], dt)
     
     for k in ks
-        lines[k+1, :] .= DoAnalysis(Nt, false, k+1, dt)
+        lines[k+1, :] .= DoAnalysis(Nt, false, k, dt)
     end
 
 
@@ -33,8 +33,8 @@ end
 
 function DoAnalysis(Nt, localize::Bool, k, dt)
     # Grid and physical setup
-    N = 51
-    Lx, Ly = 1.0, 1.0
+    N = 50
+    Lx, Ly = 4.0, 4.0
     dx, dy = Lx / (N - 1), Ly / (N - 1)
     cx, cy, nu = 1.0, 1.0, 0.01
     res = zeros(Nt)
@@ -57,9 +57,7 @@ function DoAnalysis(Nt, localize::Bool, k, dt)
     xf = zeros(N*N, Ne)
 
     for i in 1:Ne
-        xc, yc = c_ensemble[1, i], c_ensemble[2, i]
-        gaussian = exp.(-50 .* ((X .- xc).^2 .+ (Y .- yc).^2))
-        xf[:, i] = reshape(gaussian, N*N)
+        xf[:, i] .= reshape(u.+ 0.1.*randn(size(u)), N*N, 1)
     end
 
     # Observations
@@ -103,10 +101,9 @@ function DoAnalysis(Nt, localize::Bool, k, dt)
         # Observation vector from truth
         y = reshape(u, N*N, 1)[observe_index, :]
         
-        # Do the EnKF analysis
+        # Do the EnKF analysis, updates xf
         BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, localize, k, rep, L)
         temp_analysis_mean = mean(xf, dims=2)
-        #xf .= temp_analysis  # update ensemble
 
         # Compute and save RMS error
         res[i] = (1 / N) * norm(temp_analysis_mean .- reshape(u, N*N, 1))

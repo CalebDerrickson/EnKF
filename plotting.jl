@@ -3,7 +3,7 @@ using Plots
 function main()
     max_iter = 25
     len = 100
-    ks = 1:2
+    ks = 1:10
     lines = zeros(length(ks)+1, len)
     input = readdlm("EnKF_output.txt", ',')
     titles = ["localize"]
@@ -26,8 +26,12 @@ function main()
         i+=1
     end
     plot!(yscale=:log10, minorgrid=true)
-    ylims!(1e-3, 0.1)
+    ylims!(0.004, 0.01)
     #title!("max_iter: $(max_iter)")
+    ylabel!("RMSE")
+    xlabel!("Time step")
+    title!("EnKF - Localization to VecchiaMLE")
     plot!(legend=:outerbottom, legendcolumns=5)
+
     display(p)
 end
