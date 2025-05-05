@@ -17,10 +17,10 @@ function main()
     ks = 1:10
     
     lines = zeros(1+2*length(ks), Nt)
-    lines[1, :] .= DoAnalysis(Nt, localization, ks[1], dt)
-    for k in ks
-        lines[1+k, :] .= DoAnalysis(Nt, OneVecchia, k, dt)
-    end
+    #lines[1, :] .= DoAnalysis(Nt, localization, ks[1], dt)
+    #for k in ks
+    #    lines[1+k, :] .= DoAnalysis(Nt, OneVecchia, k, dt)
+    #end
     for k in ks
         lines[1+length(ks)+k, :] .= DoAnalysis(Nt, TwoVecchia, k, dt)
     end
