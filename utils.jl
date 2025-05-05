@@ -45,3 +45,9 @@ struct ADParams
     nu::Float64          # diffusion coefficient
     dU::Matrix{Float64}  # pre‐allocated N×N buffer for ∂U/∂t
 end
+
+@enum Strategy begin
+    localization
+    OneVecchia
+    TwoVecchia
+end

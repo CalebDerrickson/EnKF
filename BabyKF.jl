@@ -1,4 +1,4 @@
-function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::AbstractVector, localize::Bool, k, rep, L)
+function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::AbstractVector, strat::Strategy, k)
     num_states, N = size(xf) # 2500 x 50 
     num_observation = size(y, 1)
 
@@ -13,39 +13,81 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
     # Using inn as the observed update of kalman filter
     inn = y_perturbed .- view(xf, observe_index, :)
 
-    if localize
-        rhoPH = rho[:, observe_index]
-        rhoHPHt = rho[observe_index, observe_index]
-
-        zb = xf[observe_index, :]
-        zbm = mean(zb, dims=2) 
-        Zb = (1 / sqrt(N - 1)) * (zb .- repeat(zbm, 1, N))
-
-        K = (rhoHPHt .* (Zb * Zb') .+ R) \ inn
-        xf .+= rhoPH .* (xf_dev * Zb') * K
-
-        return
-
-    else
-        # Have to transpose them since that's how VecciaMLE parses them. 
-        xf_mat = Matrix{Float64}(xf')
-        xfm = mean(xf_mat, dims = 2) # mean by row. 
-        xf_mat .-= repeat(xfm, 1, num_states)
-        
-        n = Int(sqrt(size(xf_mat, 2)))
-        input = VecchiaMLEInput(n, k, xf_mat, N, 5, 1; ptGrid=ptGrid)
-        
-        d, L = VecchiaMLE_Run(input)
-        
-        #println(findnz(sparse(L[k, :]))[2])
-        #println("grad: ", d.normed_grad_value)
-        #println("cons: ", d.normed_constraint_value)
-        
-        rep .= L' \ (L \ H')
-        xf .+= rep * ((view(rep, observe_index, :).+R) \ inn)
-        return
+    if strat == localization 
+        Localization(xf, y, xf_dev, inn, observe_index, rho, R)
+    elseif strat == OneVecchia
+        OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
+    elseif strat == TwoVecchia
+        TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     end
-    
-    
 end
 
+function Localization(xf, y, xf_dev, inn, observe_index, rho, R)
+    num_states, N = size(xf) # 2500 x 50 
+    num_observation = size(y, 1)
+
+    rhoPH = rho[:, observe_index]
+    rhoHPHt = rho[observe_index, observe_index]
+
+    zb = xf[observe_index, :]
+    zbm = mean(zb, dims=2) 
+    Zb = (1 / sqrt(N - 1)) * (zb .- repeat(zbm, 1, N))
+
+    K = (rhoHPHt .* (Zb * Zb') .+ R) \ inn
+    xf .+= rhoPH .* (xf_dev * Zb') * K
+end
+
+function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
+    num_states, N = size(xf) # 2500 x 50 
+    num_observation = size(y, 1)
+
+    # Have to transpose them since that's how VecciaMLE parses them. 
+    xf_mat = Matrix{Float64}(xf')
+    xfm = mean(xf_mat, dims = 2) # mean by row. 
+    xf_mat .-= repeat(xfm, 1, num_states)
+    
+    n = Int(sqrt(size(xf_mat, 2)))
+    input = VecchiaMLEInput(n, k, xf_mat, N, 5, 1; ptGrid=ptGrid)
+    
+    L = VecchiaMLE_Run(input)[2]
+    
+    rep = L' \ (L \ H')
+    xf .+= rep * ((view(rep, observe_index, :).+R) \ inn)
+
+end
+
+
+function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
+    num_states, N = size(xf) # 2500 x 50 
+    num_observation = size(y, 1)
+
+    # Have to transpose them since that's how VecciaMLE parses them. 
+    xf_mat = Matrix{Float64}(xf')
+    xfm = mean(xf_mat, dims = 2) # mean by row. 
+    xf_mat .-= repeat(xfm, 1, num_states)
+    
+    n = Int(sqrt(size(xf_mat, 2)))
+    input = VecchiaMLEInput(n, k, xf_mat, N, 5, 1; ptGrid=ptGrid)
+    
+    L = VecchiaMLE_Run(input)[2]
+    
+    # Generate Randomness from normal
+    R_half_Z = randn(N, num_observation)
+    R_half_Z = R_half_Z * sqrt.(R) # Since R is diagonal this is fine
+    
+    samples = xf_mat[:, observe_index]
+    
+    samples .+= R_half_Z
+    subptGrid = ptGrid[observe_index]
+    n = Int(sqrt(size(samples, 2)))
+
+    input = VecchiaMLEInput(n, k, samples, N, 5, 1; ptGrid=subptGrid)
+    S = VecchiaMLE_Run(input)[2]
+
+    # Next form kalman filter
+    K = L' \ (L \ H')
+    K .= K * S * S'
+    
+    # Next perform update
+    xf .+= K * inn
+end

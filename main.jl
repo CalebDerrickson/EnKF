@@ -16,16 +16,18 @@ function main()
     
     ks = 1:10
     
-    lines = zeros(1+length(ks), Nt)
-    lines[1, :] .= DoAnalysis(Nt, true, ks[1], dt)
-    
+    lines = zeros(1+2*length(ks), Nt)
+    lines[1, :] .= DoAnalysis(Nt, localization, ks[1], dt)
     for k in ks
-        lines[k+1, :] .= DoAnalysis(Nt, false, k, dt)
+        lines[1+k, :] .= DoAnalysis(Nt, OneVecchia, k, dt)
+    end
+    for k in ks
+        lines[1+length(ks)+k, :] .= DoAnalysis(Nt, TwoVecchia, k, dt)
     end
 
 end
 
-function DoAnalysis(Nt, localize::Bool, k, dt)
+function DoAnalysis(Nt, strat::Strategy, k, dt)
     # Grid and physical setup
     N = 50
     Lx, Ly = 10.0, 10.0#6.0, 6.0
@@ -69,8 +71,6 @@ function DoAnalysis(Nt, localize::Bool, k, dt)
     infl = 1.01
     localization_radius = 0.3
     rho = cal_rho(localization_radius, N*N, gaspari_cohn, N, Lx, Ly)
-    rep = zeros(N*N, length(observe_index))
-    L = zeros(N*N, N*N)
 
     
 
@@ -101,19 +101,23 @@ function DoAnalysis(Nt, localize::Bool, k, dt)
         y = reshape(u, N*N, 1)[observe_index, :]
         
         # Do the EnKF analysis, updates xf
-        BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, localize, k, rep, L)
+        BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, strat, k)
         temp_analysis_mean = mean(xf, dims=2)
 
         # Compute and save RMS error
         res[i] = (1 / N) * norm(temp_analysis_mean .- reshape(u, N*N, 1))
+        output = ""
+        if strat == localization output *= "0,"
+        elseif strat == OneVecchia output *= "1,"
+        elseif strat == TwoVecchia output *= "2," 
+        end
+        output *= "$k,$i,$(res[i])"
 
         open("EnKF_output.txt", "a") do io
-            println(io, "$(localize ? 0 : k),$i,$(res[i])")
+            println(io, output)
         end
         println("Step = $i, rms = $(res[i])")
 
-        fill!(rep, 0.0)
-        fill!(L, 0.0)
     end
 
     return res
