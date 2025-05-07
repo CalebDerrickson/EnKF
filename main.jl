@@ -10,20 +10,21 @@ using SparseArrays
 function main()
     seed = 4681
     Random.seed!(seed)
-    dts = (1:5).*0.001
-    Nt = 1000
+    T = 1.0
+    dts = [1, 2, 4, 5].*0.001
+    Nts = [T / dt for dt in dts]
     ks = 1:10
     
-    lines = zeros(1+2*length(ks), Nt)
-    for dt in dts
-        lines[1, :] .= DoAnalysis(Nt, localization, ks[1], dt, seed)
+    for (i, Nt) in enumerate(Nts)
+        lines = zeros(1+2*length(ks), Nt)
+        lines[1, :] .= DoAnalysis(Nt, localization, ks[1], dts[i], seed)
         for k in ks
-            lines[1+k, :] .= DoAnalysis(Nt, OneVecchia, k, dt, seed)
+            lines[1+k, :] .= DoAnalysis(Nt, OneVecchia, k, dts[i], seed)
         end
         for k in ks
-            lines[1+length(ks)+k, :] .= DoAnalysis(Nt, TwoVecchia, k, dt, seed)
+            lines[1+length(ks)+k, :] .= DoAnalysis(Nt, TwoVecchia, k, dts[i], seed)
         end
-        open("EnKF_output_$(seed)_$(dt).txt", "a") do io
+        open("EnKF_output_$(seed)_$(dts[i]).txt", "a") do io
             writedlm(io, lines)
         end
     end
