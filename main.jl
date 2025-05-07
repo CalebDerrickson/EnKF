@@ -8,21 +8,24 @@ using SparseArrays
 
 
 function main()
-    seed = 4444
+    seed = 4681
     Random.seed!(seed)
-    dt = 0.001
-    T = 0.1
-    Nt = Int(T * 1.0/dt)
-    
+    dts = (1:5).*0.001
+    Nt = 1000
     ks = 1:10
     
     lines = zeros(1+2*length(ks), Nt)
-    #lines[1, :] .= DoAnalysis(Nt, localization, ks[1], dt, seed)
-    #for k in ks
-    #    lines[1+k, :] .= DoAnalysis(Nt, OneVecchia, k, dt, seed)
-    #end
-    for k in ks
-        lines[1+length(ks)+k, :] .= DoAnalysis(Nt, TwoVecchia, k, dt, seed)
+    for dt in dts
+        lines[1, :] .= DoAnalysis(Nt, localization, ks[1], dt, seed)
+        for k in ks
+            lines[1+k, :] .= DoAnalysis(Nt, OneVecchia, k, dt, seed)
+        end
+        for k in ks
+            lines[1+length(ks)+k, :] .= DoAnalysis(Nt, TwoVecchia, k, dt, seed)
+        end
+        open("EnKF_output_$(seed)_$(dt).txt", "a") do io
+            writedlm(io, lines)
+        end
     end
 
 end
@@ -53,7 +56,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     # these centers needs to be on the grid, should be random indices, and then centers would be XYGrid[RandomIndices]. 
     #c_ensemble = [Lx/2; Ly/2] .+ 0.1 .* randn(2, N*N)
     c_ensemble_idx = shuffle(1:N*N)
-    c_ensemble =  [[XYGrid[1][i], XYGrid[2][i]] for i in c_ensemble_idx]   
+    c_ensemble = [[XYGrid[1][i], XYGrid[2][i]] for i in c_ensemble_idx]   
     xf = zeros(N*N, Ne)
     ptGrid = c_ensemble
 
@@ -115,13 +118,9 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
         elseif strat == OneVecchia output *= "1,"
         elseif strat == TwoVecchia output *= "2," 
         end
-        output *= "$k,$i,$(res[i]),$(kl_div)"
 
-        open("EnKF_output_$(seed).txt", "a") do io
-            println(io, output)
-        end
-        println("Step = $i, rms = $(res[i]), KL = $(kl_div)")
-
+        println("$(output), k = $(k), Step = $(i), rms = $(res[i]), ")
+        if res[i] > 1e4 break end
     end
 
     return res
