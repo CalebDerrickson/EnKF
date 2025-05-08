@@ -12,7 +12,7 @@ function main()
     Random.seed!(seed)
     T = 1.0
     dts = [1, 2, 4, 5].*0.001
-    Nts = [T / dt for dt in dts]
+    Nts = [Int(T / dt) for dt in dts]
     ks = 1:10
     
     for (i, Nt) in enumerate(Nts)
@@ -53,7 +53,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     u = exp.(-100 .* ((X .- centers[1]).^2 .+ (Y .- centers[2]).^2))
 
     # Initial ensemble
-    Ne = 100  # ensemble size
+    Ne = 200  # ensemble size
     # these centers needs to be on the grid, should be random indices, and then centers would be XYGrid[RandomIndices]. 
     #c_ensemble = [Lx/2; Ly/2] .+ 0.1 .* randn(2, N*N)
     c_ensemble_idx = shuffle(1:N*N)
@@ -70,7 +70,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     end
 
     # Observations
-    observe_index = sample(1:N*N, 25; replace=false) 
+    observe_index = sample(1:N*N, Int(0.25*N*N); replace=false) 
     sigma = 0.01
     R = Diagonal(fill(sigma^2, length(observe_index)))
     H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
@@ -121,7 +121,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
         end
 
         println("$(output), k = $(k), Step = $(i), rms = $(res[i]), ")
-        if res[i] > 1e4 break end
+        if res[i] > 1e3 break end
     end
 
     return res

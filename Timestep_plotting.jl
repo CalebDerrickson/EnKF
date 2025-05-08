@@ -3,7 +3,7 @@ using DelimitedFiles
 
 function main()
     seed = 4681
-    dts = (1:5).*0.001
+    dts = [1, 2, 4, 5].*0.001
     
     for dt in dts
         filename = "EnKF_output_$(seed)_$(dt).txt"
@@ -50,7 +50,7 @@ function plot(input, dt)
     end
 
     plot!(p1, yscale=:log10, minorgrid=true)
-    ylims!(p1, 0.004, 0.012)
+    ylims!(p1, 0.001, 0.1)
     #title!(p1, "max_iter: $(max_iter)")
     ylabel!(p1, "RMSE")
     xlabel!(p1, "Time step")
@@ -58,7 +58,7 @@ function plot(input, dt)
     plot!(p1, legend=:outerbottom, legendcolumns=5, dpi=1000)
 
     plot!(p2, yscale=:log10, minorgrid=true)
-    ylims!(p2, 0.004, 0.012)
+    ylims!(p2, 0.001, 1)
     ylabel!(p2, "RMSE")
     xlabel!(p2, "Time step")
     title!(p2, "RMS 2VecchiaMLE - dt = $(dt)")
