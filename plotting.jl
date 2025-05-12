@@ -9,9 +9,9 @@ function main()
     titles = ["localize"]
     carry = 101
     
-    lines[1, :] .= input[1:100, 3]
+    lines[1, :] .= input[1:100, 4]
     for i in ks
-        lines[i+1, :] .= input[carry:(i+1)*len, 3]
+        lines[i+1, :] .= input[carry:(i+1)*len, 4]
         carry += len
         push!(titles, "k = $(i)")
     end
@@ -30,7 +30,7 @@ function main()
     #title!("max_iter: $(max_iter)")
     ylabel!("RMSE")
     xlabel!("Time step")
-    title!("EnKF - Localization to VecchiaMLE")
+    title!("EnKF - Localization to 1VecchiaMLE")
     plot!(legend=:outerbottom, legendcolumns=5)
 
     display(p)
