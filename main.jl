@@ -8,30 +8,36 @@ using SparseArrays
 
 
 function main()
-    seed = 6513
+    seed = 4681
     Random.seed!(seed)
-    dt = 0.001
-    T = 0.1
-    Nt = Int(T * 1.0/dt)
-    
+    T = 1.0
+    dts = [1, 2, 4, 5].*0.001
+    Nts = [Int(T / dt) for dt in dts]
     ks = 1:10
     
-    lines = zeros(1+2*length(ks), Nt)
-    #lines[1, :] .= DoAnalysis(Nt, localization, ks[1], dt)
-    #for k in ks
-    #    lines[1+k, :] .= DoAnalysis(Nt, OneVecchia, k, dt)
-    #end
-    for k in ks
-        lines[1+length(ks)+k, :] .= DoAnalysis(Nt, TwoVecchia, k, dt)
+    for (i, Nt) in enumerate(Nts)
+        lines = zeros(1+2*length(ks), Nt)
+        lines[1, :] .= DoAnalysis(Nt, localization, ks[1], dts[i], seed)
+        for k in ks
+            lines[1+k, :] .= DoAnalysis(Nt, OneVecchia, k, dts[i], seed)
+        end
+        for k in ks
+            lines[1+length(ks)+k, :] .= DoAnalysis(Nt, TwoVecchia, k, dts[i], seed)
+        end
+        open("EnKF_output_$(seed)_$(dts[i]).txt", "a") do io
+            writedlm(io, lines)
+        end
     end
 
 end
 
-function DoAnalysis(Nt, strat::Strategy, k, dt)
+function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     # Grid and physical setup
     N = 50
-    Lx, Ly = 10.0, 10.0#6.0, 6.0
+    Lx, Ly = 10.0, 10.0
     dx, dy = Lx / (N - 1), Ly / (N - 1)
+
+    # Transport speed and diffusion
     cx, cy, nu = 1.0, 1.0, 0.01
     res = zeros(Nt)
 
@@ -47,11 +53,13 @@ function DoAnalysis(Nt, strat::Strategy, k, dt)
     u = exp.(-100 .* ((X .- centers[1]).^2 .+ (Y .- centers[2]).^2))
 
     # Initial ensemble
-    Ne = 100  # ensemble size
+    Ne = 200  # ensemble size
     # these centers needs to be on the grid, should be random indices, and then centers would be XYGrid[RandomIndices]. 
-    c_ensemble = [Lx/2; Ly/2] .+ 0.1 .* randn(2, N*N)
+    #c_ensemble = [Lx/2; Ly/2] .+ 0.1 .* randn(2, N*N)
+    c_ensemble_idx = shuffle(1:N*N)
+    c_ensemble = [[XYGrid[1][i], XYGrid[2][i]] for i in c_ensemble_idx]   
     xf = zeros(N*N, Ne)
-    ptGrid = [col for col in eachcol(c_ensemble)]
+    ptGrid = c_ensemble
 
     # Generate a covariance matrix for the xf noise distrubition.
     #MatCov = VecchiaMLE.generate_MatCov(N, [5.0, 0.2, 2.25, 0.25], ptGrid)
@@ -62,7 +70,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt)
     end
 
     # Observations
-    observe_index = 1:cld(N*N, 25):N*N  
+    observe_index = sample(1:N*N, Int(0.25*N*N); replace=false) 
     sigma = 0.01
     R = Diagonal(fill(sigma^2, length(observe_index)))
     H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
@@ -101,7 +109,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt)
         y = reshape(u, N*N, 1)[observe_index, :]
         
         # Do the EnKF analysis, updates xf
-        BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, strat, k)
+        kl_div = BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, strat, k)
         temp_analysis_mean = mean(xf, dims=2)
 
         # Compute and save RMS error
@@ -111,13 +119,9 @@ function DoAnalysis(Nt, strat::Strategy, k, dt)
         elseif strat == OneVecchia output *= "1,"
         elseif strat == TwoVecchia output *= "2," 
         end
-        output *= "$k,$i,$(res[i])"
 
-        open("EnKF_output.txt", "a") do io
-            println(io, output)
-        end
-        println("Step = $i, rms = $(res[i])")
-
+        println("$(output), k = $(k), Step = $(i), rms = $(res[i]), ")
+        if res[i] > 1e3 break end
     end
 
     return res
