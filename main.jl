@@ -17,18 +17,21 @@ function main()
     
     for (i, Nt) in enumerate(Nts)
         lines = zeros(1+2*length(ks), Nt)
-        #lines[1, :] .= DoAnalysis(Nt, localization, ks[1], dts[i], seed)
-        #for k in ks
-        #    lines[1+k, :] .= DoAnalysis(Nt, OneVecchia, k, dts[i], seed)
-        #end
+
+        lines[1, :] .= DoAnalysis(Nt, localization, ks[1], dts[i], seed)
+        writetofile(seed, dts[i], lines[1, :])
+
+        for k in ks
+            lines[1+k, :] .= DoAnalysis(Nt, OneVecchia, k, dts[i], seed)
+            writetofile(seed, dts[i], lines[1+k, :])
+        end
+
         for k in ks
             lines[1+length(ks)+k, :] .= DoAnalysis(Nt, TwoVecchia, k, dts[i], seed)
-        end
-        open("EnKF_output_$(seed)_$(dts[i]).txt", "a") do io
-            writedlm(io, lines)
+            writetofile(seed, dts[i], lines[1+length(ks) + k, :])
         end
     end
-
+    
 end
 
 function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
@@ -126,9 +129,8 @@ function logstatus(strat::Strategy, k::Int, i::Int, num::Float64, seed::Int, dt:
     end
 end
 
-function get_rank_precision(L)
-    if isnothing(L)
-        return 0
+function writetofile(seed, dt, line)
+    open("EnKF_output_$(seed)_$(dt).txt", "a") do io
+        writedlm(io, [line])
     end
-    return rank(L*L')
 end
