@@ -8,7 +8,7 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
     # Add inflation
     xfm = mean(xf, dims=2)
     xf_dev = (1 / sqrt(N-1)) * (xf .- repeat(xfm, 1, N))
-    xf .= sqrt(N - 1) * sqrt(infl) * xf_dev + repeat(xfm, 1, N)
+    #xf .= sqrt(N - 1) * sqrt(infl) * xf_dev + repeat(xfm, 1, N)
     
     # Using inn as the observed update of kalman filter
     inn = y_perturbed .- view(xf, observe_index, :)
@@ -35,7 +35,7 @@ function Localization(xf, y, xf_dev, inn, observe_index, rho, R)
 
     K = (rhoHPHt .* (Zb * Zb') .+ R) \ inn
     xf .+= rhoPH .* (xf_dev * Zb') * K
-    return 0.0
+    return nothing
 end
 
 function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
@@ -51,11 +51,9 @@ function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     input = VecchiaMLEInput(n, k, xf_mat, N, 5, 1; ptGrid=ptGrid)
     
     L = VecchiaMLE_Run(input)[2]
-    #kl_div = getKLDivergence(xf_mat, L)
-
     rep = L' \ (L \ H')
     xf .+= rep * ((view(rep, observe_index, :).+R) \ inn)
-    return 0.0
+    return L
 end
 
 
@@ -83,6 +81,7 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     subptGrid = ptGrid[observe_index]
     n = Int(sqrt(size(samples, 2)))
 
+    
     input = VecchiaMLEInput(n, 3, samples, N, 5, 1; ptGrid=subptGrid)
     S = VecchiaMLE_Run(input)[2]
     #kl_div = getKLDivergence(xf_mat, L)
@@ -94,5 +93,5 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     
     # Next perform update
     xf .+= K * inn
-    return 0.0
+    return L
 end

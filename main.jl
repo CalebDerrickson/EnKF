@@ -17,10 +17,10 @@ function main()
     
     for (i, Nt) in enumerate(Nts)
         lines = zeros(1+2*length(ks), Nt)
-        lines[1, :] .= DoAnalysis(Nt, localization, ks[1], dts[i], seed)
-        for k in ks
-            lines[1+k, :] .= DoAnalysis(Nt, OneVecchia, k, dts[i], seed)
-        end
+        #lines[1, :] .= DoAnalysis(Nt, localization, ks[1], dts[i], seed)
+        #for k in ks
+        #    lines[1+k, :] .= DoAnalysis(Nt, OneVecchia, k, dts[i], seed)
+        #end
         for k in ks
             lines[1+length(ks)+k, :] .= DoAnalysis(Nt, TwoVecchia, k, dts[i], seed)
         end
@@ -56,21 +56,24 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     Ne = 200  # ensemble size
     # these centers needs to be on the grid, should be random indices, and then centers would be XYGrid[RandomIndices]. 
     #c_ensemble = [Lx/2; Ly/2] .+ 0.1 .* randn(2, N*N)
-    c_ensemble_idx = shuffle(1:N*N)
+    c_ensemble_idx = shuffle(1:N*N)   
     c_ensemble = [[XYGrid[1][i], XYGrid[2][i]] for i in c_ensemble_idx]   
-    xf = zeros(N*N, Ne)
     ptGrid = c_ensemble
 
     # Generate a covariance matrix for the xf noise distrubition.
     #MatCov = VecchiaMLE.generate_MatCov(N, [5.0, 0.2, 2.25, 0.25], ptGrid)
     #xf = VecchiaMLE.generate_Samples(MatCov, N, Ne; mode = VecchiaMLE.cpu)'
 
-    for i in 1:Ne
-        xf[:, i] .= reshape(u.+ 0.1.*randn(size(u)), N*N, 1)
-    end
+    # NOW MATERN COVARIANCE MATRIX!!
+    # Right now, ensembles are disbtitued with scaled identity covariance.
+    # params = [σ, ρ, ν]
+    params = [5.0, 0.2, 2.25]
+    MatCov = VecchiaMLE.generate_MatCov(N, params)
+    xf = Matrix{Float64}(VecchiaMLE.generate_Samples(MatCov, N, Ne)')
+    xf .+= repeat(reshape(u, N*N, 1), 1, Ne)
 
     # Observations
-    observe_index = sample(1:N*N, Int(0.25*N*N); replace=false) 
+    observe_index = sample(1:N*N, Int(0.25*N*N); replace=false)
     sigma = 0.01
     R = Diagonal(fill(sigma^2, length(observe_index)))
     H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
@@ -80,49 +83,52 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     localization_radius = 0.3
     rho = cal_rho(localization_radius, N*N, gaspari_cohn, N, Lx, Ly)
 
-    
-
-    # Setup truth propagation
-    p_truth = ADParams(N, dx, dy, cx, cy, nu, zeros(N,N))
-    prob_truth = ODEProblem(advection_diffusion!, u, (0.0, Nt*dt), p_truth)
-    int_truth = init(prob_truth, Tsit5(), dt=dt, adaptive=false, save_everystep=false)
-
-    # Setup ensemble propagation
-    p_ens = ADParams(N, dx, dy, cx, cy, nu, zeros(N,N))
-    prob_ens = ODEProblem(advection_diffusion!, zeros(N*N), (0.0, Nt*dt), p_ens)
-    int_ens = init(prob_ens, Tsit5(), dt=dt, adaptive=false, save_everystep=false)
 
     for i = 1:Nt
         # Propagate truth
-        reinit!(int_truth, u)
-        step!(int_truth)
-        u .= int_truth.u
+        u = forward_euler(u, N, dx, dy, dt, cx, cy, nu)
 
         # Propagate ensembles
-        for j in 1:Ne
-            reinit!(int_ens, xf[:, j])
-            step!(int_ens)
-            xf[:, j] .= int_ens.u
+        for j = 1:N
+            temp = forward_euler(xf[:, j], N, dx, dy, dt, cx, cy, nu)
+            xf[:, j] = reshape(temp, N*N, 1)
         end
 
         # Observation vector from truth
         y = reshape(u, N*N, 1)[observe_index, :]
         
         # Do the EnKF analysis, updates xf
-        kl_div = BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, strat, k)
+        BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, strat, k)
         temp_analysis_mean = mean(xf, dims=2)
+        
 
         # Compute and save RMS error
         res[i] = (1 / N) * norm(temp_analysis_mean .- reshape(u, N*N, 1))
-        output = ""
-        if strat == localization output *= "0,"
-        elseif strat == OneVecchia output *= "1,"
-        elseif strat == TwoVecchia output *= "2," 
-        end
-
-        println("$(output), k = $(k), Step = $(i), rms = $(res[i]), ")
-        if res[i] > 1e3 break end
+        
+        logstatus(strat, k, i, res[i], seed, dt)
+        if res[i] > 1e2 break end
     end
 
     return res
+end
+
+
+function logstatus(strat::Strategy, k::Int, i::Int, num::Float64, seed::Int, dt::Float64)
+    output = ""
+    if strat == localization output *= "0"
+    elseif strat == OneVecchia output *= "1"
+    elseif strat == TwoVecchia output *= "2" 
+    end
+    line = ["$(output), k = $(k), Step = $(i), rms = $(num)"]
+    println(line[1])
+    open("EnKF_log_$(seed)_$(dt).txt", "a") do io
+        writedlm(io, line)
+    end
+end
+
+function get_rank_precision(L)
+    if isnothing(L)
+        return 0
+    end
+    return rank(L*L')
 end
