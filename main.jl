@@ -5,7 +5,7 @@ using LinearAlgebra
 using PProf
 using VecchiaMLE
 using SparseArrays
-
+using Base.Threads
 
 function main()
     seed = 4681
@@ -15,19 +15,19 @@ function main()
     Nts = [Int(T / dt) for dt in dts]
     ks = 1:10
     
-    for (i, Nt) in enumerate(Nts)
-        lines = zeros(1+2*length(ks), Nt)
+    Threads.@threads for i in 1:length(Nts)
+        lines = zeros(1+2*length(ks), Nts[i])
 
-        lines[1, :] .= DoAnalysis(Nt, localization, ks[1], dts[i], seed)
+        lines[1, :] .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
         writetofile(seed, dts[i], lines[1, :])
 
         for k in ks
-            lines[1+k, :] .= DoAnalysis(Nt, OneVecchia, k, dts[i], seed)
+            lines[1+k, :] .= DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed)
             writetofile(seed, dts[i], lines[1+k, :])
         end
 
         for k in ks
-            lines[1+length(ks)+k, :] .= DoAnalysis(Nt, TwoVecchia, k, dts[i], seed)
+            lines[1+length(ks)+k, :] .= DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed)
             writetofile(seed, dts[i], lines[1+length(ks) + k, :])
         end
     end
@@ -56,7 +56,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     u = exp.(-100 .* ((X .- centers[1]).^2 .+ (Y .- centers[2]).^2))
 
     # Initial ensemble
-    Ne = 200  # ensemble size
+    Ne = 100  # ensemble size
     # these centers needs to be on the grid, should be random indices, and then centers would be XYGrid[RandomIndices]. 
     #c_ensemble = [Lx/2; Ly/2] .+ 0.1 .* randn(2, N*N)
     c_ensemble_idx = shuffle(1:N*N)   
@@ -70,8 +70,8 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     # NOW MATERN COVARIANCE MATRIX!!
     # Right now, ensembles are disbtitued with scaled identity covariance.
     # params = [σ, ρ, ν]
-    params = [5.0, 0.2, 2.25]
-    MatCov = VecchiaMLE.generate_MatCov(N, params)
+    params = [5.0, 0.5, 2.25]
+    MatCov = VecchiaMLE.generate_MatCov(N, params, ptGrid)
     xf = Matrix{Float64}(VecchiaMLE.generate_Samples(MatCov, N, Ne)')
     xf .+= repeat(reshape(u, N*N, 1), 1, Ne)
 
@@ -82,7 +82,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
 
     # Covariance localization
-    infl = 1.01
+    infl = 1.005
     localization_radius = 0.3
     rho = cal_rho(localization_radius, N*N, gaspari_cohn, N, Lx, Ly)
 

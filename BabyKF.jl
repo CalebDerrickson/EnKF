@@ -8,7 +8,7 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
     # Add inflation
     xfm = mean(xf, dims=2)
     xf_dev = (1 / sqrt(N-1)) * (xf .- repeat(xfm, 1, N))
-    #xf .= sqrt(N - 1) * sqrt(infl) * xf_dev + repeat(xfm, 1, N)
+    xf .= sqrt(N - 1) * sqrt(infl) * xf_dev + repeat(xfm, 1, N)
     
     # Using inn as the observed update of kalman filter
     inn = y_perturbed .- view(xf, observe_index, :)
