@@ -11,12 +11,12 @@ function main()
     seed = 4681
     Random.seed!(seed)
     T = 1.0
-    dts = [1, 2, 4, 5].*0.001
+    dts = [2, 4, 5, 8].*0.001
     Nts = [Int(T / dt) for dt in dts]
     ks = 1:10
     
     Threads.@threads for i in 1:length(Nts)
-        lines = zeros(1+2*length(ks), Nts[i])
+        lines = zeros(1+length(ks), Nts[i])
 
         lines[1, :] .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
         writetofile(seed, dts[i], lines[1, :])
@@ -24,11 +24,6 @@ function main()
         for k in ks
             lines[1+k, :] .= DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed)
             writetofile(seed, dts[i], lines[1+k, :])
-        end
-
-        for k in ks
-            lines[1+length(ks)+k, :] .= DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed)
-            writetofile(seed, dts[i], lines[1+length(ks) + k, :])
         end
     end
     
@@ -70,7 +65,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     # NOW MATERN COVARIANCE MATRIX!!
     # Right now, ensembles are disbtitued with scaled identity covariance.
     # params = [σ, ρ, ν]
-    params = [5.0, 0.5, 2.25]
+    params = [5.0, 0.8, 2.25]
     MatCov = VecchiaMLE.generate_MatCov(N, params, ptGrid)
     xf = Matrix{Float64}(VecchiaMLE.generate_Samples(MatCov, N, Ne)')
     xf .+= repeat(reshape(u, N*N, 1), 1, Ne)
@@ -82,7 +77,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
 
     # Covariance localization
-    infl = 1.005
+    infl = 1.0035
     localization_radius = 0.3
     rho = cal_rho(localization_radius, N*N, gaspari_cohn, N, Lx, Ly)
 
