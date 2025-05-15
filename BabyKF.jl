@@ -79,15 +79,16 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     
     samples .+= R_half_Z'
     subptGrid = ptGrid[observe_index]
-    #n = Int(sqrt(size(samples, 2)))
+    n = Int(sqrt(size(samples, 2)))
 
-    #input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid)
-    #S = VecchiaMLE_Run(input)[2]
-    
+    samples = VecchiaMLE.generate_Samples(samples' * samples, Int(sqrt(num_observation)), Ne)
+
+    input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid)
+    S = VecchiaMLE_Run(input)[2]
 
     # Next form kalman filter
     K = L' \ (L \ H')
-    K .= K * inv(samples' * samples)
+    K .= K * S * S'
     
     # Next perform update
     xf .+= K * inn
