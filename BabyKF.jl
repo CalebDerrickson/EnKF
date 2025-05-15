@@ -3,7 +3,7 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
     num_observation = size(y, 1)
 
     # Add noise to observation
-    y_perturbed = repeat(y, 1, N) + sqrt.(R) * (randn(num_observation, N))
+    y_perturbed = repeat(y, 1, N) + sqrt.(R) * randn(num_observation, N)
 
     # Add inflation
     xfm = mean(xf, dims=2)
@@ -58,7 +58,7 @@ end
 
 
 function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
-    num_states, N = size(xf) # 2500 x 50 
+    num_states, Ne = size(xf) # 2500 x 50 
     num_observation = size(y, 1)
 
     # Have to transpose them since that's how VecciaMLE parses them. 
@@ -67,31 +67,29 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     xf_mat .-= repeat(xfm, 1, num_states)
     
     n = Int(sqrt(size(xf_mat, 2)))
-    input = VecchiaMLEInput(n, k, xf_mat, N, 5, 1; ptGrid=ptGrid)
+    input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid)
     
     L = VecchiaMLE_Run(input)[2]
     
     # Generate Randomness from normal
-    R_half_Z = randn(N, num_observation)
-    R_half_Z = R_half_Z * sqrt.(R) # Since R is diagonal this is fine
+    R_half_Z = randn(num_observation, Ne)
+    R_half_Z = sqrt.(R) * R_half_Z # Since R is diagonal this is fine
     
     samples = xf_mat[:, observe_index]
     
-    samples .+= R_half_Z
+    samples .+= R_half_Z'
     subptGrid = ptGrid[observe_index]
-    n = Int(sqrt(size(samples, 2)))
+    #n = Int(sqrt(size(samples, 2)))
 
+    #input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid)
+    #S = VecchiaMLE_Run(input)[2]
     
-    input = VecchiaMLEInput(n, 3, samples, N, 5, 1; ptGrid=subptGrid)
-    S = VecchiaMLE_Run(input)[2]
-    #kl_div = getKLDivergence(xf_mat, L)
-
 
     # Next form kalman filter
     K = L' \ (L \ H')
-    K .= K * S * S'
+    K .= K * inv(samples' * samples)
     
     # Next perform update
     xf .+= K * inn
-    return L
+    return 
 end

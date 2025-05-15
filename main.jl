@@ -5,25 +5,26 @@ using LinearAlgebra
 using PProf
 using VecchiaMLE
 using SparseArrays
-using Base.Threads
 
 function main()
     seed = 4681
     Random.seed!(seed)
     T = 1.0
-    dts = [2, 4, 5, 8].*0.001
+    dts = [5, 8].*0.001
     Nts = [Int(T / dt) for dt in dts]
     ks = 1:10
     
-    Threads.@threads for i in 1:length(Nts)
-        lines = zeros(1+length(ks), Nts[i])
+    for i in 1:length(Nts)
+        lines = zeros(1+2*length(ks), Nts[i])
+        offset = 1
+        #lines[offset, :] .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
+        #writetofile(seed, dts[i], lines[1, :])
+        
 
-        lines[1, :] .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
-        writetofile(seed, dts[i], lines[1, :])
-
+        offset += length(ks)
         for k in ks
-            lines[1+k, :] .= DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed)
-            writetofile(seed, dts[i], lines[1+k, :])
+            lines[offset+k, :] .= DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed)
+            #writetofile(seed, dts[i], lines[offset+k, :])
         end
     end
     
@@ -31,7 +32,7 @@ end
 
 function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     # Grid and physical setup
-    N = 50
+    N = 10
     Lx, Ly = 10.0, 10.0
     dx, dy = Lx / (N - 1), Ly / (N - 1)
 
