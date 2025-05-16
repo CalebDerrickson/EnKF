@@ -81,7 +81,8 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     subptGrid = ptGrid[observe_index]
     n = Int(sqrt(size(samples, 2)))
 
-    samples = VecchiaMLE.generate_Samples(samples' * samples, Int(sqrt(num_observation)), Ne)
+    #samples = VecchiaMLE.generate_Samples(chol' * chol, Int(sqrt(num_observation)), Ne)
+    #samples = samples * randn(num_observation, num_observation)
 
     input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid)
     S = VecchiaMLE_Run(input)[2]

@@ -10,7 +10,7 @@ function main()
     seed = 4681
     Random.seed!(seed)
     T = 1.0
-    dts = [5, 8].*0.001
+    dts = [2, 4, 5, 8].*0.001
     Nts = [Int(T / dt) for dt in dts]
     ks = 1:10
     
@@ -120,9 +120,9 @@ function logstatus(strat::Strategy, k::Int, i::Int, num::Float64, seed::Int, dt:
     end
     line = ["$(output), k = $(k), Step = $(i), rms = $(num)"]
     println(line[1])
-    open("EnKF_log_$(seed)_$(dt).txt", "a") do io
-        writedlm(io, line)
-    end
+    #open("EnKF_log_$(seed)_$(dt).txt", "a") do io
+    #    writedlm(io, line)
+    #end
 end
 
 function writetofile(seed, dt, line)
