@@ -67,7 +67,7 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     xf_mat .-= repeat(xfm, 1, num_states)
     
     n = Int(sqrt(size(xf_mat, 2)))
-    input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid)
+    input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true)
 
     L = LinearAlgebra.LowerTriangular(VecchiaMLE_Run(input)[2])
     
@@ -83,9 +83,9 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
 
     samples = chol * randn(num_observation, num_observation)
 
-    input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid)
+    input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid, skip_check=true)
     S = LinearAlgebra.LowerTriangular(VecchiaMLE_Run(input)[2])
-
+    
     # Next form kalman filter
     K = L' \ (L \ H')
     K .= K * S * S'

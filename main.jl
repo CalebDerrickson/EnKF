@@ -17,8 +17,8 @@ function main()
     for i in 1:length(Nts)
         lines = zeros(1+2*length(ks), Nts[i])
         offset = 1
-        #lines[offset, :] .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
-        #writetofile(seed, dts[i], lines[1, :])
+        lines[offset, :] .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
+        writetofile(seed, dts[i], lines[1, :])
         
 
         offset += length(ks)
@@ -32,7 +32,7 @@ end
 
 function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     # Grid and physical setup
-    N = 50
+    N = 100
     Lx, Ly = 10.0, 10.0
     dx, dy = Lx / (N - 1), Ly / (N - 1)
 
