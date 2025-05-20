@@ -68,20 +68,20 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     
     n = Int(sqrt(size(xf_mat, 2)))
     input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid)
-    
+
     L = VecchiaMLE_Run(input)[2]
     
     # Generate Randomness from normal
     R_half_Z = randn(num_observation, Ne)
     R_half_Z = sqrt.(R) * R_half_Z # Since R is diagonal this is fine
     
-    samples = xf_mat[:, observe_index]
+    chol = xf_mat[:, observe_index]
     
-    samples .+= R_half_Z'
+    chol .+= R_half_Z'
     subptGrid = ptGrid[observe_index]
-    n = Int(sqrt(size(samples, 2)))
+    n = Int(sqrt(size(chol, 2)))
 
-    #samples = VecchiaMLE.generate_Samples(chol' * chol, Int(sqrt(num_observation)), Ne)
+    samples = VecchiaMLE.generate_Samples(chol' * chol, Int(sqrt(num_observation)), Ne)
     #samples = samples * randn(num_observation, num_observation)
 
     input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid)
