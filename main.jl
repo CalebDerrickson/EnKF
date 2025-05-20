@@ -17,8 +17,8 @@ function main()
     for i in 1:length(Nts)
         lines = zeros(1+2*length(ks), Nts[i])
         offset = 1
-        lines[offset, :] .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
-        writetofile(seed, dts[i], lines[1, :])
+        #lines[offset, :] .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
+        #writetofile(seed, dts[i], lines[1, :])
         
 
         offset += length(ks)
@@ -93,15 +93,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
         # Do the EnKF analysis, updates xf
         BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, strat, k)
         
-        if strat != localization
-            open("EnKF_output_diag_$(dt).txt", "a") do io
-                X_cov = 1/(Ne-1) * sum(xf[:, j] * xf[:, j]' for j in 1:size(xf, 2))
-                line = [X_cov[j, j] for j in 1:size(X_cov, 2)]
-                writedlm(io, [line])
-            end
-        end
         temp_analysis_mean = mean(xf, dims=2)
-        
     
         # Compute and save RMS error
         res[i] = (1 / N) * norm(temp_analysis_mean .- reshape(u, N*N, 1))
