@@ -1,4 +1,4 @@
-function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::AbstractVector, strat::Strategy, k, PATTERN_CACHE=nothing)
+function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::AbstractVector, strat::Strategy, k, PATTERN_CACHE)
     num_states, N = size(xf) # 2500 x 50 
     num_observation = size(y, 1)
 
@@ -68,21 +68,21 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
     
     n = Int(sqrt(size(xf_mat, 2)))
     
-    #if PATTERN_CACHE.L === nothing
-    #    input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true)
-    #else
-    #    input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true,
-    #        rowsL = PATTERN_CACHE.L.rowval,
-    #        colsL = PATTERN_CACHE.L.colval,
-    #        colptrL = PATTERN_CACHE.L.colptr
-    #    )
-    #end
-    input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true)
+    if PATTERN_CACHE.L === nothing
+        input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true)
+    else
+        input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true,
+            rowsL = PATTERN_CACHE.L.rowval,
+            colsL = PATTERN_CACHE.L.colval,
+            colptrL = PATTERN_CACHE.L.colptr
+        )
+    end
+
     L = VecchiaMLE_Run(input)[2]
 
-    #if PATTERN_CACHE.L === nothing
-    #    cache_pattern!(L, :L)
-    #end
+    if PATTERN_CACHE.L === nothing
+        cache_pattern!(L, :L, PATTERN_CACHE)
+    end
 
     L = LinearAlgebra.LowerTriangular(L)
 
@@ -98,21 +98,20 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
 
     samples = chol * randn(num_observation, num_observation)
 
-    #if PATTERN_CACHE.S === nothing
-    #    input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid, skip_check=true)
-    #else
-    #    input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid, skip_check=true, 
-    #        rowsL = PATTERN_CACHE.S.rowval,
-    #        colsL = PATTERN_CACHE.S.colval,
-    #        colptrL = PATTERN_CACHE.S.colptr
-    #    ) 
-    #end
-    input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid, skip_check=true)
+    if PATTERN_CACHE.S === nothing
+        input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid, skip_check=true)
+    else
+        input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid, skip_check=true, 
+            rowsL = PATTERN_CACHE.S.rowval,
+            colsL = PATTERN_CACHE.S.colval,
+            colptrL = PATTERN_CACHE.S.colptr
+        ) 
+    end
     S = VecchiaMLE_Run(input)[2]
 
-    #if PATTERN_CACHE.S === nothing
-    #    cache_pattern!(S, :S)
-    #end
+    if PATTERN_CACHE.S === nothing
+        cache_pattern!(S, :S, PATTERN_CACHE)
+    end
 
     S = LinearAlgebra.LowerTriangular(S)
 

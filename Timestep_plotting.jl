@@ -3,7 +3,7 @@ using DelimitedFiles
 
 function main()
     seed = 4681
-    dts = [2, 4, 5, 8].*0.001
+    dts = [1, 2, 5, 8].*0.001
     
     for dt in dts
         filename = "EnKF_output_$(seed)_$(dt).txt"

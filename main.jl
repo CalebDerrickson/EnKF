@@ -6,12 +6,11 @@ using PProf
 using VecchiaMLE
 
 
-
 function main()
-    seed = 4681
+    seed = 7763
     Random.seed!(seed)
     T = 1.0
-    dts = [2, 4, 5, 8].*0.001
+    dts = [1, 2, 5, 8].*0.001
     Nts = [Int(T / dt) for dt in dts]
     ks = 1:10
     
@@ -33,7 +32,7 @@ end
 
 function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     # Grid and physical setup
-    N = 10
+    N = 100
     Lx, Ly = 10.0, 10.0
     dx, dy = Lx / (N - 1), Ly / (N - 1)
 
@@ -76,7 +75,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     infl = 1.01
     localization_radius = 0.3
     rho = cal_rho(localization_radius, N*N, gaspari_cohn, N, Lx, Ly)
-    #PATTERN_CACHE = PatternCache(nothing, nothing)
+    PATTERN_CACHE = PatternCache(nothing, nothing)
 
     for i = 1:Nt
         # Propagate truth
@@ -92,7 +91,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
         y = reshape(u, N*N, 1)[observe_index, :]
         
         # Do the EnKF analysis, updates xf
-        BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, strat, k)
+        BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, strat, k, PATTERN_CACHE)
         
         temp_analysis_mean = mean(xf, dims=2)
     

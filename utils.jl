@@ -81,13 +81,13 @@ function get_csc_pattern(A::SparseMatrixCSC)
     return (rows = rows, cols = col_indices, colptr = colptr)
 end
 
-function cache_pattern!(mat::SparseMatrixCSC, which::Symbol)
+function cache_pattern!(mat::SparseMatrixCSC, which::Symbol, PATTERN_CACHE::PatternCache)
     I, J, P = get_csc_pattern(mat)
     pattern = CSCPattern(I, J, P)
     if which === :L
-        GLOBAL_PATTERN_CACHE[].L = pattern
+        PATTERN_CACHE.L = pattern
     elseif which === :S
-        GLOBAL_PATTERN_CACHE[].S = pattern
+        PATTERN_CACHE.S = pattern
     else
         error("Unknown matrix identifier: $which")
     end
