@@ -1,4 +1,4 @@
-function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::AbstractVector, strat::Strategy, k)
+function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::AbstractVector, strat::Strategy, k, PATTERN_CACHE=nothing)
     num_states, N = size(xf) # 2500 x 50 
     num_observation = size(y, 1)
 
@@ -18,7 +18,7 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
     elseif strat == OneVecchia
         OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     elseif strat == TwoVecchia
-        TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
+        TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k, PATTERN_CACHE)
     end
 end
 
@@ -57,7 +57,7 @@ function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
 end
 
 
-function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
+function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k, PATTERN_CACHE)
     num_states, Ne = size(xf)
     num_observation = size(y, 1)
 
@@ -67,10 +67,25 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     xf_mat .-= repeat(xfm, 1, num_states)
     
     n = Int(sqrt(size(xf_mat, 2)))
-    input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true)
-
-    L = LinearAlgebra.LowerTriangular(VecchiaMLE_Run(input)[2])
     
+    #if PATTERN_CACHE.L === nothing
+    #    input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true)
+    #else
+    #    input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true,
+    #        rowsL = PATTERN_CACHE.L.rowval,
+    #        colsL = PATTERN_CACHE.L.colval,
+    #        colptrL = PATTERN_CACHE.L.colptr
+    #    )
+    #end
+    input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true)
+    L = VecchiaMLE_Run(input)[2]
+
+    #if PATTERN_CACHE.L === nothing
+    #    cache_pattern!(L, :L)
+    #end
+
+    L = LinearAlgebra.LowerTriangular(L)
+
     # Generate Randomness from normal
     R_half_Z = randn(num_observation, Ne)
     R_half_Z = sqrt.(R) * R_half_Z # Since R is diagonal this is fine
@@ -83,14 +98,31 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
 
     samples = chol * randn(num_observation, num_observation)
 
+    #if PATTERN_CACHE.S === nothing
+    #    input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid, skip_check=true)
+    #else
+    #    input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid, skip_check=true, 
+    #        rowsL = PATTERN_CACHE.S.rowval,
+    #        colsL = PATTERN_CACHE.S.colval,
+    #        colptrL = PATTERN_CACHE.S.colptr
+    #    ) 
+    #end
     input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid, skip_check=true)
-    S = LinearAlgebra.LowerTriangular(VecchiaMLE_Run(input)[2])
-    
+    S = VecchiaMLE_Run(input)[2]
+
+    #if PATTERN_CACHE.S === nothing
+    #    cache_pattern!(S, :S)
+    #end
+
+    S = LinearAlgebra.LowerTriangular(S)
+
     # Next form kalman filter
     K = L' \ (L \ H')
     K .= K * S * S'
     
     # Next perform update
     xf .+= K * inn
-    return 
+    return
 end
+
+

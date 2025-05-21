@@ -4,7 +4,8 @@ using DelimitedFiles
 using LinearAlgebra
 using PProf
 using VecchiaMLE
-using SparseArrays
+
+
 
 function main()
     seed = 4681
@@ -32,7 +33,7 @@ end
 
 function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     # Grid and physical setup
-    N = 100
+    N = 10
     Lx, Ly = 10.0, 10.0
     dx, dy = Lx / (N - 1), Ly / (N - 1)
 
@@ -75,7 +76,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     infl = 1.01
     localization_radius = 0.3
     rho = cal_rho(localization_radius, N*N, gaspari_cohn, N, Lx, Ly)
-
+    #PATTERN_CACHE = PatternCache(nothing, nothing)
 
     for i = 1:Nt
         # Propagate truth

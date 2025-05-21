@@ -56,3 +56,39 @@ function getKLDivergence(xf, L)
     mat = (1.0 / (size(xf, 1) - 1)) * sum(xf[i, :] * xf[i, :]' for i in size(xf, 1))
     return VecchiaMLE.KLDivergence(mat, L)
 end
+
+
+struct CSCPattern
+    rowval::Vector{Int}
+    colval::Vector{Int}
+    colptr::Vector{Int}
+end
+
+mutable struct PatternCache
+    L::Union{Nothing, CSCPattern}
+    S::Union{Nothing, CSCPattern}
+end
+
+function get_csc_pattern(A::SparseMatrixCSC)
+    rows = A.rowval
+    colptr = A.colptr
+    col_indices = Vector{Int}(undef, length(rows))
+    for j in 1:length(colptr)-1
+        for k in colptr[j]:colptr[j+1]-1
+            col_indices[k] = j
+        end
+    end
+    return (rows = rows, cols = col_indices, colptr = colptr)
+end
+
+function cache_pattern!(mat::SparseMatrixCSC, which::Symbol)
+    I, J, P = get_csc_pattern(mat)
+    pattern = CSCPattern(I, J, P)
+    if which === :L
+        GLOBAL_PATTERN_CACHE[].L = pattern
+    elseif which === :S
+        GLOBAL_PATTERN_CACHE[].S = pattern
+    else
+        error("Unknown matrix identifier: $which")
+    end
+end

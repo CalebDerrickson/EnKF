@@ -1,6 +1,6 @@
 using LinearAlgebra, Statistics, Distributions
 using VecchiaMLE
-using DifferentialEquations
+using DifferentialEquations, SparseArrays
 
 include("utils.jl")
 include("BabyKF.jl")
