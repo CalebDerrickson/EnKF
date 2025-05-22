@@ -51,8 +51,20 @@ function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     input = VecchiaMLEInput(n, k, xf_mat, N, 5, 1; ptGrid=ptGrid)
     
     L = VecchiaMLE_Run(input)[2]
+    
+    # The below code is straight Kalman Filter. 
     rep = L' \ (L \ H')
     xf .+= rep * ((view(rep, observe_index, :).+R) \ inn)
+
+    # The below code is Phil's idea (SMW)
+    # K = BₖHₖᵀRₖ⁻¹[I - Z(ZᵀRₖ⁻¹Z + I)⁻¹ZᵀRₖ⁻¹]
+    # Z = 1 / √(N-1) * HₖX
+    #Z = xf[observe_index, :] ./ sqrt(N-1)
+    #K = L' \ (L \ H') / R
+    #K .= K * (I - Z * ((Z' / R * Z + I) \ (Z' / R)))
+    # Next perform update
+    #xf .+= K * inn
+
     return L
 end
 
@@ -99,15 +111,16 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
     samples = chol * randn(num_observation, num_observation)
 
     if PATTERN_CACHE.S === nothing
-        input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid, skip_check=true)
+        input = VecchiaMLEInput(n, cld(k, 4), samples, Ne, 5, 1; ptGrid=subptGrid, skip_check=true)
     else
-        input = VecchiaMLEInput(n, k, samples, Ne, 5, 1; ptGrid=subptGrid, skip_check=true, 
+        input = VecchiaMLEInput(n, cld(k, 4), samples, Ne, 5, 1; ptGrid=subptGrid, skip_check=true, 
             rowsL = PATTERN_CACHE.S.rowval,
             colsL = PATTERN_CACHE.S.colval,
             colptrL = PATTERN_CACHE.S.colptr
         ) 
     end
     S = VecchiaMLE_Run(input)[2]
+
 
     if PATTERN_CACHE.S === nothing
         cache_pattern!(S, :S, PATTERN_CACHE)

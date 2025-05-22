@@ -2,20 +2,21 @@ using Plots
 using DelimitedFiles
 
 function main()
-    seed = 4681
-    dts = [1, 2, 5, 8].*0.001
-    
+    seed = 7763
+    dts = [8].*0.001
+    ks = 1:10
+
     for dt in dts
         filename = "EnKF_output_$(seed)_$(dt).txt"
         input = readdlm(filename)  
-        p2 = plot(input, dt)
-        #savefig(p1, "Vecchia1_dt_$(dt).png")
-        savefig(p2, "Vecchia2_dt_$(dt).png")
+        p1 = plot(input, dt, ks)
+        savefig(p1, "Vecchia1_dt_$(dt).png")
+        #savefig(p2, "Vecchia2_dt_$(dt).png")
     end
     
 end
 
-function plot(input, dt)
+function plot(input, dt, ks)
 
     # Check for zeros
     for i in 1:size(input, 1)
@@ -24,7 +25,7 @@ function plot(input, dt)
 
     i = 1
     titles = ["localize"]
-    for line in 1:10
+    for line in ks
         push!(titles, "k = $(i)")
         i+=1
     end
@@ -49,7 +50,7 @@ function plot(input, dt)
 
     i = 1
     p2 = Plots.plot()
-    for line in 1:11
+    for line in 1:(ks[end]+1)
         if i == 1
             plot!(p2, dt:dt:size(input, 2)*dt, input[line, :], label=titles[i], lc=:black, linewidth=2)
         else

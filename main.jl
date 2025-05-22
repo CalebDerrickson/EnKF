@@ -10,7 +10,7 @@ function main()
     seed = 7763
     Random.seed!(seed)
     T = 1.0
-    dts = [1, 2, 5, 8].*0.001
+    dts = [8].*0.001
     Nts = [Int(T / dt) for dt in dts]
     ks = 1:10
     
@@ -20,10 +20,14 @@ function main()
         lines[offset, :] .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
         writetofile(seed, dts[i], lines[1, :])
         
+        for (j, k) in enumerate(ks)
+            lines[offset+j, :] .= DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed)
+            writetofile(seed, dts[i], lines[offset+k, :])
+        end
 
         offset += length(ks)
-        for k in ks
-            lines[offset+k, :] .= DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed)
+        for (j, k) in enumerate(ks)
+            lines[offset+j, :] .= DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed)
             writetofile(seed, dts[i], lines[offset+k, :])
         end
     end
@@ -32,7 +36,7 @@ end
 
 function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     # Grid and physical setup
-    N = 100
+    N = 50
     Lx, Ly = 10.0, 10.0
     dx, dy = Lx / (N - 1), Ly / (N - 1)
 
@@ -66,7 +70,9 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     xf .+= repeat(reshape(u, N*N, 1), 1, Ne)
 
     # Observations
-    observe_index = sample(1:N*N, Int(0.25*N*N); replace=false)
+    #observe_index = sort(sample(1:N*N, Int(0.25*N*N); replace=false))
+    observe_index = vec( reshape(1:N*N, N, N)[1:2:end, 1:2:end] )
+
     sigma = 0.1
     R = Diagonal(fill(sigma^2, length(observe_index)))
     H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
