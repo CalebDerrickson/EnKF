@@ -53,17 +53,18 @@ function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     L = VecchiaMLE_Run(input)[2]
     
     # The below code is straight Kalman Filter. 
-    rep = L' \ (L \ H')
-    xf .+= rep * ((view(rep, observe_index, :).+R) \ inn)
+    #rep = L' \ (L \ H')
+    #xf .+= rep * ((view(rep, observe_index, :).+R) \ inn)
 
     # The below code is Phil's idea (SMW)
-    # K = BₖHₖᵀRₖ⁻¹[I - Z(ZᵀRₖ⁻¹Z + I)⁻¹ZᵀRₖ⁻¹]
+    # K = BₖHₖᵀ[Rₖ⁻¹ - Rₖ⁻¹Z(ZᵀRₖ⁻¹Z + I)⁻¹ZᵀRₖ⁻¹]
     # Z = 1 / √(N-1) * HₖX
-    #Z = xf[observe_index, :] ./ sqrt(N-1)
-    #K = L' \ (L \ H') / R
-    #K .= K * (I - Z * ((Z' / R * Z + I) \ (Z' / R)))
+    
+    Z = xf[observe_index, :] ./ sqrt(N-1)
+    K = L' \ (L \ H')
+    K .= K * (inv(R) - (R\Z) * ((Z' / R * Z + I) \ Z') / R)
     # Next perform update
-    #xf .+= K * inn
+    xf .+= K * inn
 
     return L
 end
@@ -75,8 +76,8 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
 
     # Have to transpose them since that's how VecciaMLE parses them. 
     xf_mat = Matrix{Float64}(xf')
-    xfm = mean(xf_mat, dims = 2) # mean by row. 
-    xf_mat .-= repeat(xfm, 1, num_states)
+    xfm = mean(xf_mat, dims = 1) # mean by col. 
+    xf_mat .-= repeat(xfm, Ne, 1)
     
     n = Int(sqrt(size(xf_mat, 2)))
     
@@ -108,7 +109,7 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
     subptGrid = ptGrid[observe_index]
     n = Int(sqrt(size(chol, 2)))
 
-    samples = chol * randn(num_observation, num_observation)
+    samples = randn(Ne, Ne) * chol 
 
     if PATTERN_CACHE.S === nothing
         input = VecchiaMLEInput(n, cld(k, 4), samples, Ne, 5, 1; ptGrid=subptGrid, skip_check=true)

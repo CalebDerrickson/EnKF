@@ -20,10 +20,10 @@ function main()
         lines[offset, :] .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
         writetofile(seed, dts[i], lines[1, :])
         
-        for (j, k) in enumerate(ks)
-            lines[offset+j, :] .= DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed)
-            writetofile(seed, dts[i], lines[offset+k, :])
-        end
+        #for (j, k) in enumerate(ks)
+        #    lines[offset+j, :] .= DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed)
+        #    writetofile(seed, dts[i], lines[offset+k, :])
+        #end
 
         offset += length(ks)
         for (j, k) in enumerate(ks)
