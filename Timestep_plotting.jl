@@ -9,9 +9,9 @@ function main()
     for dt in dts
         filename = "EnKF_output_$(seed)_$(dt).txt"
         input = readdlm(filename)  
-        p1 = plot(input, dt, ks)
-        savefig(p1, "Vecchia1_dt_$(dt).png")
-        #savefig(p2, "Vecchia2_dt_$(dt).png")
+        p2 = plot(input, dt, ks)
+        #savefig(p1, "Vecchia1_dt_$(dt).png")
+        savefig(p2, "Vecchia2_dt_$(dt).png")
     end
     
 end
@@ -23,11 +23,9 @@ function plot(input, dt, ks)
         input[i, input[i, :] .==0] .= maximum(input[i, :])
     end
 
-    i = 1
     titles = ["localize"]
     for line in ks
-        push!(titles, "k = $(i)")
-        i+=1
+        push!(titles, "k = $(line)")
     end
     #i = 1
     #p1 = Plots.plot()
@@ -50,7 +48,7 @@ function plot(input, dt, ks)
 
     i = 1
     p2 = Plots.plot()
-    for line in 1:(ks[end]+1)
+    for line in 1:(length(ks)+1)
         if i == 1
             plot!(p2, dt:dt:size(input, 2)*dt, input[line, :], label=titles[i], lc=:black, linewidth=2)
         else

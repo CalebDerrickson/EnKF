@@ -84,7 +84,7 @@ end
 
 
 function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k, PATTERN_CACHE)
-    num_states, Ne = size(xf)
+    _, Ne = size(xf)
     num_observation = size(y, 1)
 
     # Have to transpose them since that's how VecciaMLE parses them. 
@@ -104,17 +104,17 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
         )
     end
 
-    L = VecchiaMLE_Run(input)[2]
+    L = VecchiaMLE_Run(input)[2] ./ sqrt(Ne)
 
     if PATTERN_CACHE.L === nothing
         cache_pattern!(L, :L, PATTERN_CACHE)
     end
 
-    L = LinearAlgebra.LowerTriangular(L)
+    #L = LinearAlgebra.LowerTriangular(L)
 
     # Generate Randomness from normal
     R_half_Z = randn(num_observation, Ne)
-    R_half_Z = sqrt.(R) * R_half_Z # Since R is diagonal this is fine
+    R_half_Z .= sqrt.(R) * R_half_Z # Since R is diagonal this is fine
     
     chol = xf_mat[:, observe_index]
     
@@ -133,8 +133,14 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
             colptrL = PATTERN_CACHE.S.colptr
         ) 
     end
-    S = VecchiaMLE_Run(input)[2]
+    S = VecchiaMLE_Run(input)[2] 
 
+    # calculating the scaling coefficient
+    scale = mean(diag(S))^(-2) + mean(diag(R))
+    scale *= n
+    scale *= Ne # Do we add this as well?
+ 
+    S ./= sqrt(scale)
 
     if PATTERN_CACHE.S === nothing
         cache_pattern!(S, :S, PATTERN_CACHE)

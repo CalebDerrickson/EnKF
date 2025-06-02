@@ -9,27 +9,26 @@ using VecchiaMLE
 function main()
     seed = 7763
     Random.seed!(seed)
-    T = 1.0
+    T = 3.0
     dts = [8].*0.001
     Nts = [Int(T / dt) for dt in dts]
     ks = 1:10
+    line = zeros(maximum(Nts))
     
     for i in 1:length(Nts)
-        lines = zeros(1+2*length(ks), Nts[i])
-        offset = 1
-        lines[offset, :] .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
-        writetofile(seed, dts[i], lines[1, :])
+        
+        view(line, 1:Nts[i]) .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
+        writetofile(seed, dts[i], view(line, 1:Nts[i]))
         
         #for (j, k) in enumerate(ks)
-        #    lines[offset+j, :] .= DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed)
-        #    writetofile(seed, dts[i], lines[offset+k, :])
+        #    line .= DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed)
+        #    writetofile(seed, dts[i], line)
         #end
 
-        offset += length(ks)
-        for (j, k) in enumerate(ks)
-            lines[offset+j, :] .= DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed)
-            writetofile(seed, dts[i], lines[offset+k, :])
-        end
+        #for k in ks
+        #    view(line, 1:Nts[i]) .= DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed)
+        #    writetofile(seed, dts[i], view(line, 1:Nts[i]))
+        #end
     end
     
 end
@@ -37,7 +36,11 @@ end
 function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     # Grid and physical setup
     N = 50
-    Lx, Ly = 10.0, 10.0
+
+    # QUESTION: Should this change with the size of N? 
+    GridLen = max(0.2 * N, 10.0)
+    Lx = Ly = GridLen 
+    
     dx, dy = Lx / (N - 1), Ly / (N - 1)
 
     # Transport speed and diffusion
@@ -98,7 +101,8 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
         
         # Do the EnKF analysis, updates xf
         BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, strat, k, PATTERN_CACHE)
-        
+
+
         temp_analysis_mean = mean(xf, dims=2)
     
         # Compute and save RMS error
