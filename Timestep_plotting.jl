@@ -3,7 +3,7 @@ using DelimitedFiles
 
 function main()
     seed = 7763
-    dts = [8].*0.001
+    dts = [10].*0.001
     ks = 1:10
 
     for dt in dts
@@ -23,44 +23,29 @@ function plot(input, dt, ks)
         input[i, input[i, :] .==0] .= maximum(input[i, :])
     end
 
-    titles = ["localize"]
+    titles = ["localize", "Empirical"]
     for line in ks
         push!(titles, "k = $(line)")
     end
-    #i = 1
-    #p1 = Plots.plot()
-    #for line in 1:11
-    #    if i == 1
-    #        plot!(p1, dt:dt:size(input, 2)*dt, input[line, :], label=titles[i], lc=:black, linewitdth=2)
-    #    else
-    #        plot!(p1, dt:dt:size(input, 2)*dt, input[line, :], label=titles[i], linewidth=0.75)
-    #    end
-    #    i+=1
-    #end
-    #plot!(p1, yscale=:log10, minorgrid=true)
-    ##ylims!(p1, 0.001, 0.1)
-    ##title!(p1, "max_iter: $(max_iter)")
-    #ylabel!(p1, "RMSE")
-    #xlabel!(p1, "Time step")
-    #title!(p1, "RMS 1VecchiaMLE - dt = $(dt)")
-    #plot!(p1, legend=:outerbottom, legendcolumns=5, dpi=1000)
-
 
     i = 1
     p2 = Plots.plot()
     for line in 1:(length(ks)+1)
         if i == 1
             plot!(p2, dt:dt:size(input, 2)*dt, input[line, :], label=titles[i], lc=:black, linewidth=2)
+        elseif i == 2
+            plot!(p2, dt:dt:size(input, 2)*dt, input[line, :], label=titles[i], lc=:gray, linewidth=2)
         else
             plot!(p2, dt:dt:size(input, 2)*dt, input[line, :], label=titles[i], linewidth=0.75)
         end
+
         i+=1
     end
     plot!(p2, yscale=:log10, minorgrid=true)
     #ylims!(p2, 0.001, 1)
     ylabel!(p2, "RMSE")
     xlabel!(p2, "Time step")
-    title!(p2, "RMS 2VecchiaMLE - dt = $(dt)")
+    title!(p2, "RMS 1VecchiaMLE - dt = $(dt)")
     plot!(p2, legend=:outerbottom, legendcolumns=5, dpi=1000)
 
     return p2

@@ -41,6 +41,7 @@ function Localization(xf, y, xf_dev, inn, observe_index, rho, R)
 end
 
 function EmpiricalAnalysis(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
+    num_states, N = size(xf)
 
     zb = xf[observe_index, :]
     zbm = mean(zb, dims=2) 
@@ -57,8 +58,8 @@ function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
 
     # Have to transpose them since that's how VecciaMLE parses them. 
     xf_mat = Matrix{Float64}(xf')
-    xfm = mean(xf_mat, dims = 2) # mean by row. 
-    xf_mat .-= repeat(xfm, 1, num_states)
+    xfm = mean(xf_mat, dims = 1) # mean by col. 
+    xf_mat .-= repeat(xfm, N, 1)
     
     n = Int(sqrt(size(xf_mat, 2)))
     input = VecchiaMLEInput(n, k, xf_mat, N, 5, 1; ptGrid=ptGrid)
@@ -72,10 +73,10 @@ function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     # The below code is Phil's idea (SMW)
     # K = BₖHₖᵀ[Rₖ⁻¹ - Rₖ⁻¹Z(ZᵀRₖ⁻¹Z + I)⁻¹ZᵀRₖ⁻¹]
     # Z = 1 / √(N-1) * HₖX
-    
-    Z = xf[observe_index, :] ./ sqrt(N-1)
+
+    Z = xf_mat[:,observe_index]' ./ sqrt(N-1)
     K = L' \ (L \ H')
-    K .= K * (inv(R) - (R\Z) * ((Z' / R * Z + I) \ Z') / R)
+    K .= K * (inv(R) .- (R\Z) * ((Z' / R * Z + I) \ Z') / R)
     # Next perform update
     xf .+= K * inn
 
@@ -104,7 +105,7 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
         )
     end
 
-    L = VecchiaMLE_Run(input)[2] ./ sqrt(Ne)
+    L = VecchiaMLE_Run(input)[2]
 
     if PATTERN_CACHE.L === nothing
         cache_pattern!(L, :L, PATTERN_CACHE)
@@ -122,7 +123,7 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
     subptGrid = ptGrid[observe_index]
     n = Int(sqrt(size(chol, 2)))
 
-    samples = randn(Ne, Ne) * chol 
+    samples =  randn(Ne, Ne) * chol
 
     if PATTERN_CACHE.S === nothing
         input = VecchiaMLEInput(n, cld(k, 4), samples, Ne, 5, 1; ptGrid=subptGrid, skip_check=true)
@@ -134,13 +135,6 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
         ) 
     end
     S = VecchiaMLE_Run(input)[2] 
-
-    # calculating the scaling coefficient
-    scale = mean(diag(S))^(-2) + mean(diag(R))
-    scale *= n
-    scale *= Ne # Do we add this as well?
- 
-    S ./= sqrt(scale)
 
     if PATTERN_CACHE.S === nothing
         cache_pattern!(S, :S, PATTERN_CACHE)

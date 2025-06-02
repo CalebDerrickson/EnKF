@@ -9,24 +9,27 @@ using VecchiaMLE
 function main()
     seed = 7763
     Random.seed!(seed)
-    T = 3.0
-    dts = [8].*0.001
+    T = 2.0
+    dts = [10].*0.001
     Nts = [Int(T / dt) for dt in dts]
     ks = 1:10
     line = zeros(maximum(Nts))
     
     for i in 1:length(Nts)
         
-        view(line, 1:Nts[i]) .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
-        writetofile(seed, dts[i], view(line, 1:Nts[i]))
-        
-        #for (j, k) in enumerate(ks)
-        #    line .= DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed)
-        #    writetofile(seed, dts[i], line)
-        #end
+        #view(line, 1:Nts[i]) .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
+        #writetofile(seed, dts[i], view(line, 1:Nts[i]))
+#
+        #view(line, 1:Nts[i]) .= DoAnalysis(Nts[i], Empirical, ks[1], dts[i], seed)
+        #writetofile(seed, dts[i], view(line, 1:Nts[i]))
+                
+        for k in ks
+            line .= DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed)
+            writetofile(seed, dts[i], view(line, 1:Nts[i]))
+        end
 
         #for k in ks
-        #    view(line, 1:Nts[i]) .= DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed)
+        #    view(line, 1:Nts[i]) .= DoAnalysis(Nts[i], Empirical, k, dts[i], seed)
         #    writetofile(seed, dts[i], view(line, 1:Nts[i]))
         #end
     end
