@@ -19,6 +19,8 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
         OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     elseif strat == TwoVecchia
         TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k, PATTERN_CACHE)
+    elseif strat == Empirical
+        EmpiricalAnalysis(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     end
 end
 
@@ -35,6 +37,17 @@ function Localization(xf, y, xf_dev, inn, observe_index, rho, R)
 
     K = (rhoHPHt .* (Zb * Zb') .+ R) \ inn
     xf .+= rhoPH .* (xf_dev * Zb') * K
+    return nothing
+end
+
+function EmpiricalAnalysis(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
+
+    zb = xf[observe_index, :]
+    zbm = mean(zb, dims=2) 
+    Zb = (1 / sqrt(N - 1)) * (zb .- repeat(zbm, 1, N))
+
+    K = ( (Zb * Zb') .+ R) \ inn
+    xf .+= (xf_dev * Zb') * K
     return nothing
 end
 
@@ -66,7 +79,7 @@ function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     # Next perform update
     xf .+= K * inn
 
-    return L
+    return 
 end
 
 
@@ -126,8 +139,6 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
     if PATTERN_CACHE.S === nothing
         cache_pattern!(S, :S, PATTERN_CACHE)
     end
-
-    S = LinearAlgebra.LowerTriangular(S)
 
     # Next form kalman filter
     K = L' \ (L \ H')

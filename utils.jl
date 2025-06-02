@@ -50,6 +50,7 @@ end
     localization
     OneVecchia
     TwoVecchia
+    Empirical
 end
 
 function getKLDivergence(xf, L)
