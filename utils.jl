@@ -53,6 +53,11 @@ end
     Empirical
 end
 
+@enum ODEMethod begin
+    ForwardEuler
+    Integro
+end
+
 function getKLDivergence(xf, L)
     mat = (1.0 / (size(xf, 1) - 1)) * sum(xf[i, :] * xf[i, :]' for i in size(xf, 1))
     return VecchiaMLE.KLDivergence(mat, L)

@@ -9,36 +9,34 @@ using VecchiaMLE
 function main()
     seed = 7763
     Random.seed!(seed)
-    T = 1.0 
-    dts = [8].*0.001
+    T = 2.0 
+    dts = [8, 5, 4, 2].*0.001
     Nts = [Int(T / dt) for dt in dts]
-    ks = 1:10
-    line = zeros(maximum(Nts))
-    
+    ks = 8:12
+
     for i in 1:length(Nts)
         
-        view(line, 1:Nts[i]) .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
+        line = DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
         writetofile(seed, dts[i], view(line, 1:Nts[i]))
-
-        #view(line, 1:Nts[i]) .= DoAnalysis(Nts[i], Empirical, ks[1], dts[i], seed)
-        #writetofile(seed, dts[i], view(line, 1:Nts[i]))
-                
+               
         for k in ks
-            line .= DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed)
+           line = DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed)
+           writetofile(seed, dts[i], view(line, 1:Nts[i]))
+        end
+
+        for k in ks
+            line = DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed)
             writetofile(seed, dts[i], view(line, 1:Nts[i]))
         end
 
-        #for k in ks
-        #    view(line, 1:Nts[i]) .= DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed)
-        #    writetofile(seed, dts[i], view(line, 1:Nts[i]))
-        #end
+        GC.gc() # okay to run gc here? 
     end
     
 end
 
-function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
+function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=ForwardEuler)
     # Grid and physical setup
-    N = 50
+    N = 100
 
     GridLen = max(0.2 * N, 10.0)
     Lx = Ly = GridLen 
@@ -81,7 +79,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     # sigma is very important for 1Vecchia. 
     sigma = 0.25
     R = Diagonal(fill(sigma^2, length(observe_index)))
-    H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
+    H = sparse(view(Matrix{Float64}(I, N*N, N*N), observe_index, :))
 
     # Covariance localization
     infl = 1.01
@@ -89,9 +87,13 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     rho = cal_rho(localization_radius, N*N, gaspari_cohn, N, Lx, Ly)
     PATTERN_CACHE = PatternCache(nothing, nothing)
 
+    # Check for ode method. Right now either Forward euler or Integro differential equation
+    ODEFunc::Function = (OdeMethod == ForwardEuler ? forward_euler : integro)
+
+    
     for i = 1:Nt
         # Propagate truth
-        u = forward_euler(u, N, dx, dy, dt, cx, cy, nu)
+        u = ODEFunc(u, N, dx, dy, dt, cx, cy, nu)
 
         # Propagate ensembles
         for j = 1:N
@@ -104,7 +106,6 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
         
         # Do the EnKF analysis, updates xf
         BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, strat, k, PATTERN_CACHE)
-
 
         temp_analysis_mean = mean(xf, dims=2)
     

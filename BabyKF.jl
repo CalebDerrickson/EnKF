@@ -16,7 +16,7 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
     if strat == localization 
         Localization(xf, y, xf_dev, inn, observe_index, rho, R)
     elseif strat == OneVecchia
-        OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
+        OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k, PATTERN_CACHE)
     elseif strat == TwoVecchia
         TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k, PATTERN_CACHE)
     elseif strat == Empirical
@@ -52,20 +52,33 @@ function EmpiricalAnalysis(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H,
     return nothing
 end
 
-function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
-    num_states, N = size(xf)
+function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k, PATTERN_CACHE)
+    num_states, Ne = size(xf)
     num_observation = size(y, 1)
 
     # Have to transpose them since that's how VecciaMLE parses them. 
     xf_mat = Matrix{Float64}(xf')
     xfm = mean(xf_mat, dims = 1) # mean by col. 
-    xf_mat .-= repeat(xfm, N, 1)
+    xf_mat .-= repeat(xfm, Ne, 1)
 
     
     n = Int(sqrt(size(xf_mat, 2)))
-    input = VecchiaMLEInput(n, k, xf_mat, N, 5, 1; ptGrid=ptGrid)
-    
+    if PATTERN_CACHE.L === nothing
+        input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true)
+    else
+        input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true,
+            rowsL = PATTERN_CACHE.L.rowval,
+            colsL = PATTERN_CACHE.L.colval,
+            colptrL = PATTERN_CACHE.L.colptr
+        )
+    end
+
     L = VecchiaMLE_Run(input)[2]
+
+    if PATTERN_CACHE.L === nothing
+        cache_pattern!(L, :L, PATTERN_CACHE)
+    end
+
 
     # The below code is straight Kalman Filter. 
     #rep = L' \ (L \ H')
@@ -76,14 +89,13 @@ function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     # Z = HₖX
 
     Z = view(xf_mat, :, observe_index)
-    ε = 0#1e-3
-    K = (L' \ (L \ H')) * (R^2 \ (R .- (Z' *  ((Z * (R \ Z') + (N-1 + ε)*I) \ Z))))
-    K ./= (N-1)
+    K = (L' \ (L \ H')) * (R^2 \ (R .- (Z' * ((Z * (R \ Z') + (Ne-1)*I) \ Z))))
+    K ./= (Ne-1)
 
     # Next perform update
     xf .+= K * inn 
 
-    return 
+    return
 end
 
 
