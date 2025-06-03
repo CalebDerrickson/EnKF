@@ -9,17 +9,17 @@ using VecchiaMLE
 function main()
     seed = 7763
     Random.seed!(seed)
-    T = 2.0
-    dts = [10].*0.001
+    T = 1.0 
+    dts = [8].*0.001
     Nts = [Int(T / dt) for dt in dts]
     ks = 1:10
     line = zeros(maximum(Nts))
     
     for i in 1:length(Nts)
         
-        #view(line, 1:Nts[i]) .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
-        #writetofile(seed, dts[i], view(line, 1:Nts[i]))
-#
+        view(line, 1:Nts[i]) .= DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
+        writetofile(seed, dts[i], view(line, 1:Nts[i]))
+
         #view(line, 1:Nts[i]) .= DoAnalysis(Nts[i], Empirical, ks[1], dts[i], seed)
         #writetofile(seed, dts[i], view(line, 1:Nts[i]))
                 
@@ -29,7 +29,7 @@ function main()
         end
 
         #for k in ks
-        #    view(line, 1:Nts[i]) .= DoAnalysis(Nts[i], Empirical, k, dts[i], seed)
+        #    view(line, 1:Nts[i]) .= DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed)
         #    writetofile(seed, dts[i], view(line, 1:Nts[i]))
         #end
     end
@@ -40,7 +40,6 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     # Grid and physical setup
     N = 50
 
-    # QUESTION: Should this change with the size of N? 
     GridLen = max(0.2 * N, 10.0)
     Lx = Ly = GridLen 
     
@@ -79,7 +78,8 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
     #observe_index = sort(sample(1:N*N, Int(0.25*N*N); replace=false))
     observe_index = vec( reshape(1:N*N, N, N)[1:2:end, 1:2:end] )
 
-    sigma = 0.1
+    # sigma is very important for 1Vecchia. 
+    sigma = 0.25
     R = Diagonal(fill(sigma^2, length(observe_index)))
     H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
 
@@ -114,7 +114,6 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed)
         logstatus(strat, k, i, res[i], seed, dt)
         if res[i] > 1e2 break end
     end
-
     return res
 end
 

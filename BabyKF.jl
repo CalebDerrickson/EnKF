@@ -60,25 +60,28 @@ function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k)
     xf_mat = Matrix{Float64}(xf')
     xfm = mean(xf_mat, dims = 1) # mean by col. 
     xf_mat .-= repeat(xfm, N, 1)
+
     
     n = Int(sqrt(size(xf_mat, 2)))
     input = VecchiaMLEInput(n, k, xf_mat, N, 5, 1; ptGrid=ptGrid)
     
     L = VecchiaMLE_Run(input)[2]
-    
+
     # The below code is straight Kalman Filter. 
     #rep = L' \ (L \ H')
     #xf .+= rep * ((view(rep, observe_index, :).+R) \ inn)
 
     # The below code is Phil's idea (SMW)
-    # K = BₖHₖᵀ[Rₖ⁻¹ - Rₖ⁻¹Z(ZᵀRₖ⁻¹Z + I)⁻¹ZᵀRₖ⁻¹]
-    # Z = 1 / √(N-1) * HₖX
+    # K = Rₖ⁻²[R - Z( (N-1)I + ZᵀRₖ⁻¹Z )⁻¹Zᵀ]
+    # Z = HₖX
 
-    Z = xf_mat[:,observe_index]' ./ sqrt(N-1)
-    K = L' \ (L \ H')
-    K .= K * (inv(R) .- (R\Z) * ((Z' / R * Z + I) \ Z') / R)
+    Z = view(xf_mat, :, observe_index)
+    ε = 0#1e-3
+    K = (L' \ (L \ H')) * (R^2 \ (R .- (Z' *  ((Z * (R \ Z') + (N-1 + ε)*I) \ Z))))
+    K ./= (N-1)
+
     # Next perform update
-    xf .+= K * inn
+    xf .+= K * inn 
 
     return 
 end

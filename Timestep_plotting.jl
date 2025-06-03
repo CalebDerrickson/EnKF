@@ -3,7 +3,7 @@ using DelimitedFiles
 
 function main()
     seed = 7763
-    dts = [10].*0.001
+    dts = [8].*0.001
     ks = 1:10
 
     for dt in dts
@@ -23,7 +23,7 @@ function plot(input, dt, ks)
         input[i, input[i, :] .==0] .= maximum(input[i, :])
     end
 
-    titles = ["localize", "Empirical"]
+    titles = ["localize"]
     for line in ks
         push!(titles, "k = $(line)")
     end
@@ -33,8 +33,6 @@ function plot(input, dt, ks)
     for line in 1:(length(ks)+1)
         if i == 1
             plot!(p2, dt:dt:size(input, 2)*dt, input[line, :], label=titles[i], lc=:black, linewidth=2)
-        elseif i == 2
-            plot!(p2, dt:dt:size(input, 2)*dt, input[line, :], label=titles[i], lc=:gray, linewidth=2)
         else
             plot!(p2, dt:dt:size(input, 2)*dt, input[line, :], label=titles[i], linewidth=0.75)
         end
