@@ -6,7 +6,7 @@ nx = 200               # number of spatial points
 x = range(-L/2, L/2; length=nx)
 dx = step(x)
 α = 1              # kernel decay rate
-nt = 1000                # number of time steps
+nt = 25                # number of time steps
 
 # Define the nonlinearity f(N)
 r = 2.0
@@ -14,11 +14,11 @@ K = 20.0
 f(N) = r * N * (1 - N / K)   # logistic-like nonlinearity
 
 # Initialize N(x, t=0)
-N = zeros(Float64, nx, nt+1)
-N[:, 1] .= 0.5 .+ 0.5 .* rand(nx)   # small random initial population
+N = zeros(nx, nt+1)
+N[:, 1] .=  exp.(-1.0.*x.^2) # small random initial population
 
 # Precompute kernel matrix K(x, y)
-kernel = zeros(Float64, nx, nx)
+kernel = zeros(nx, nx)
 for i in 1:nx
     for j in 1:nx
         kernel[i, j] = exp(-α * abs(x[i] - x[j]))

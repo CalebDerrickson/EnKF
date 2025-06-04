@@ -36,7 +36,7 @@ end
 
 function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=ForwardEuler)
     # Grid and physical setup
-    N = 100
+    N = 50
 
     GridLen = max(0.2 * N, 10.0)
     Lx = Ly = GridLen 
