@@ -1,6 +1,7 @@
-using Plots
+#using Plots
 using LinearAlgebra
 using VecchiaMLE
+using CairoMakie
 
 function main()
     dt = 0.005
@@ -9,12 +10,10 @@ function main()
     Nt = Int(T / dt)
 
     # Grid and physical setup
-    N = 50
+    N = 25
 
-    GridLen = min(0.2 * N, 2.0)
+    GridLen = min(0.2 * N, 10.0)
     Lx = Ly = GridLen 
-
-    dx, dy = Lx / (N - 1), Ly / (N - 1)
 
     # Generate grid
     ptGrid = VecchiaMLE.generate_safe_xyGrid(N)
@@ -27,11 +26,10 @@ function main()
     # States are column vectors!
     state = zeros(N*N, Nt+1)
 
-
     # Initial truth. Gaussian centered at center
-    centers = [(Lx / 2, Ly / 2)]
-    widths = [1.0]
-    amps = [1.0]
+    centers = [(Lx / 4, Ly / 2), (Lx / 1.4, Ly / 1.4)]
+    widths = [1.0, 0.4]
+    amps = [0.6, 0.4]
 
     init = zeros(N, N)
     for i in eachindex(centers)
@@ -42,11 +40,9 @@ function main()
 
     state[:, 1] .= reshape(init, N*N, 1)
 
-
     # Define the nonlinearity f(N)
     r = 0.8
     K = 1.0
-    #f(s) = r * clamp.(s, 0.0, K*2) .* (1 .- clamp.(s, 0.0, K*2) ./ K)
     f(s) = r .* s .* (1 .- s./ K)
 
 
@@ -60,20 +56,36 @@ function main()
 
     # Time stepping
     for t in 1:Nt
-        state[:, t+1] = state[:, t] .+ dt .* (kernel * f(state[:, t]))
-        #state[:, t+1] ./= maximum(state[:,t+1])
+        state[:, t+1] .= state[:, t] .+ dt .* (kernel * f(state[:, t]))
     end
 
-
-    # Visualization
-    plot_idxs = round.(Int, range(start=1, stop=Nt, length=4))[2:end]
-    l = Plots.@layout [a b ; c d]
-    plots = Vector{Plots.Plot{Plots.GRBackend}}(undef, length(plot_idxs)+1)
-    plots[1] = heatmap(x, y, reshape(state[:, 1], N, N), xlabel="X", ylabel="Y", title="Timestep 0")
+    # The rest of this is just plotting 
     
-    display(state)
-    for (k, i) in enumerate(plot_idxs)
-        plots[k+1] = heatmap(x, y, reshape(state[:, i], N, N), xlabel="X", ylabel="Y", title="Timestep $i")
+    # Pick timesteps to visualize
+    plot_idxs = round.(Int, range(start=1, stop=Nt, length=4))[2:end]
+    all_maps = [reshape(state[:, i], N, N) for i in vcat(1, plot_idxs)]
+
+    # Global color limits across all maps
+    extremas = map(extrema, all_maps)
+    global_min = minimum(first, extremas)
+    global_max = maximum(last, extremas)
+    clims = (global_min, global_max)
+
+    # Layout dimensions
+    n_rows = 2
+    n_cols = 2
+
+    fig = Figure(;size=(1920, 1080))
+
+    for (k, map) in enumerate(all_maps)
+        row = div(k - 1, n_cols) + 1
+        col = mod(k - 1, n_cols) + 1
+        ax = Axis(fig[row, col], title="Timestep $(k == 1 ? 0 : plot_idxs[k-1])", xlabel="X", ylabel="Y")
+        heatmap!(ax, x, y, map; colorrange=clims)
     end
-    plot(plots..., layout=l)
+
+    # Shared colorbar on the right
+    Colorbar(fig[:, n_cols + 1], limits=clims)
+
+    fig
 end
