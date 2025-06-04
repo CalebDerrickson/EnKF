@@ -3,15 +3,15 @@ using LinearAlgebra
 using VecchiaMLE
 
 function main()
-    dt = 0.001
+    dt = 0.005
     #α = 0.75
-    T = 0.5
+    T = 10.0
     Nt = Int(T / dt)
 
     # Grid and physical setup
     N = 50
 
-    GridLen = max(0.2 * N, 10.0)
+    GridLen = min(0.2 * N, 2.0)
     Lx = Ly = GridLen 
 
     dx, dy = Lx / (N - 1), Ly / (N - 1)
@@ -29,34 +29,39 @@ function main()
 
 
     # Initial truth. Gaussian centered at center
-    centers = [Lx / 2, Ly / 2]
+    centers = [(Lx / 2, Ly / 2)]
+    widths = [1.0]
+    amps = [1.0]
 
-    state[:, 1] .= reshape(exp.(-1.0 .* ((X .- centers[1]).^2 .+ (Y .- centers[2]).^2)), N*N, 1)
+    init = zeros(N, N)
+    for i in eachindex(centers)
+        init .+= amps[i] .* exp.(-((X .- centers[i][1]).^2 .+ (Y .- centers[i][2]).^2) ./ (2 * widths[i]^2))
+    end
+
+    #init ./= sum(init) 
+
+    state[:, 1] .= reshape(init, N*N, 1)
 
 
     # Define the nonlinearity f(N)
-    r = 2.0
-    K = 20.0
-    f(s) = r * clamp.(s, 0.0, K*2) .* (1 .- clamp.(s, 0.0, K*2) ./ K)
+    r = 0.8
+    K = 1.0
+    #f(s) = r * clamp.(s, 0.0, K*2) .* (1 .- clamp.(s, 0.0, K*2) ./ K)
+    f(s) = r .* s .* (1 .- s./ K)
 
-    # Precompute kernel matrix K(x, y)
-    #kernel = zeros(length(ptGrid), length(ptGrid))
-    #for i in eachindex(ptGrid)
-    #    for j in eachindex(ptGrid)
-    #        kernel[i, j] = exp(-α * norm(ptGrid[i] - ptGrid[j])^2)
-    #    end
-    #    kernel[i, :] ./= sum(kernel[i, :])
-    #end
-    #display(kernel[1, :])
-    #kernel .*= (0.5 * α * dx * dy)   # includes prefactor and integration weight
-    params = [1.0, 0.8, 2.25]
+
+    # kernel matrix K(x, y)
+    params = [1.0, 0.25, 2.5]
     kernel = Matrix{Float64}(VecchiaMLE.generate_MatCov(N, params, ptGrid))
-    kernel ./= maximum(kernel)
-    kernel .*= dx * dy
+    for i in 1:size(kernel, 1)
+        kernel[i, :] ./= sum(kernel[i, :])
+    end
+    #kernel .*= dx * dy
 
     # Time stepping
     for t in 1:Nt
         state[:, t+1] = state[:, t] .+ dt .* (kernel * f(state[:, t]))
+        #state[:, t+1] ./= maximum(state[:,t+1])
     end
 
 
