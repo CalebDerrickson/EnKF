@@ -80,7 +80,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=Forwa
     # sigma is very important for 1Vecchia. 
     sigma = 0.25
     R = Diagonal(fill(sigma^2, length(observe_index)))
-    H = sparse(view(Matrix{Float64}(I, N*N, N*N), observe_index, :))
+    H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
 
     # kernel matrix K(x, y)
     if OdeMethod == Integro
