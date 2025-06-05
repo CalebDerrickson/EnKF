@@ -9,23 +9,24 @@ using VecchiaMLE
 function main()
     seed = 7763
     Random.seed!(seed)
-    T = 2.0 
-    dts = [8, 5, 4, 2].*0.001
+    T = 1.0
+    dts = [8].*0.001
     Nts = [Int(T / dt) for dt in dts]
-    ks = 8:12
+    ks = 1:10
+    OdeMethod::ODEMethod = ForwardEuler
 
     for i in 1:length(Nts)
         
-        line = DoAnalysis(Nts[i], localization, ks[1], dts[i], seed)
+        line = DoAnalysis(Nts[i], localization, ks[1], dts[i], seed, OdeMethod)
         writetofile(seed, dts[i], view(line, 1:Nts[i]))
                
-        for k in ks
-           line = DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed)
-           writetofile(seed, dts[i], view(line, 1:Nts[i]))
-        end
+        #for k in ks
+        #   line = DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed, OdeMethod)
+        #   writetofile(seed, dts[i], view(line, 1:Nts[i]))
+        #end
 
         for k in ks
-            line = DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed)
+            line = DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed, OdeMethod)
             writetofile(seed, dts[i], view(line, 1:Nts[i]))
         end
 
@@ -81,24 +82,42 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=Forwa
     R = Diagonal(fill(sigma^2, length(observe_index)))
     H = sparse(view(Matrix{Float64}(I, N*N, N*N), observe_index, :))
 
+    # kernel matrix K(x, y)
+    if OdeMethod == Integro
+        params = [1.0, 0.25, 2.5]
+        kernel = Matrix{Float64}(VecchiaMLE.generate_MatCov(N, params, ptGrid))
+        for i in 1:size(kernel, 1)
+            kernel[i, :] ./= sum(kernel[i, :])
+        end
+    end
+    
+
     # Covariance localization
     infl = 1.01
     localization_radius = 0.3
     rho = cal_rho(localization_radius, N*N, gaspari_cohn, N, Lx, Ly)
     PATTERN_CACHE = PatternCache(nothing, nothing)
 
-    # Check for ode method. Right now either Forward euler or Integro differential equation
-    ODEFunc::Function = (OdeMethod == ForwardEuler ? forward_euler : integro)
+    
 
     
     for i = 1:Nt
         # Propagate truth
-        u = ODEFunc(u, N, dx, dy, dt, cx, cy, nu)
+        if OdeMethod == ForwardEuler
+            u = forward_euler(u, N, dx, dy, dt, cx, cy, nu)
+        else
+            u = integro(u, N, dt, kernel)
+        end
 
         # Propagate ensembles
         for j = 1:N
-            temp = forward_euler(xf[:, j], N, dx, dy, dt, cx, cy, nu)
-            xf[:, j] = reshape(temp, N*N, 1)
+            if OdeMethod == ForwardEuler
+                temp = forward_euler(xf[:, j], N, dx, dy, dt, cx, cy, nu)
+                xf[:, j] .= reshape(temp, N*N, 1)
+            else
+                temp = integro(xf[:, j], N, dt, kernel)
+                xf[:, j] .= reshape(temp, N*N, 1)
+            end
         end
 
         # Observation vector from truth

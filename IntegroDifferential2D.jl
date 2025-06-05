@@ -40,6 +40,7 @@ function main()
 
     state[:, 1] .= reshape(init, N*N, 1)
 
+    ## THIS IS THE ANALYSIS
     # Define the nonlinearity f(N)
     r = 0.8
     K = 1.0
@@ -58,6 +59,8 @@ function main()
     for t in 1:Nt
         state[:, t+1] .= state[:, t] .+ dt .* (kernel * f(state[:, t]))
     end
+    ## END ANALYSIS
+
 
     # The rest of this is just plotting 
     
