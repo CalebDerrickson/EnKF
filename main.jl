@@ -9,7 +9,7 @@ using VecchiaMLE
 function main()
     seed = 7763
     Random.seed!(seed)
-    T = 1.0
+    T = 2.0
     dts = [8].*0.001
     Nts = [Int(T / dt) for dt in dts]
     ks = 1:10
