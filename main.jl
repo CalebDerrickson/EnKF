@@ -13,7 +13,7 @@ function main()
     dts = [8].*0.001
     Nts = [Int(T / dt) for dt in dts]
     ks = 1:10
-    OdeMethod::ODEMethod = ForwardEuler
+    OdeMethod::ODEMethod = Integro
 
     for i in 1:length(Nts)
         
@@ -84,7 +84,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=Forwa
 
     # kernel matrix K(x, y)
     if OdeMethod == Integro
-        params = [1.0, 0.25, 2.5]
+        params = [1.0, 0.8, 2.5]
         kernel = Matrix{Float64}(VecchiaMLE.generate_MatCov(N, params, ptGrid))
         for i in 1:size(kernel, 1)
             kernel[i, :] ./= sum(kernel[i, :])
@@ -98,9 +98,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=Forwa
     rho = cal_rho(localization_radius, N*N, gaspari_cohn, N, Lx, Ly)
     PATTERN_CACHE = PatternCache(nothing, nothing)
 
-    
 
-    
     for i = 1:Nt
         # Propagate truth
         if OdeMethod == ForwardEuler

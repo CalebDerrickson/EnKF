@@ -63,7 +63,6 @@ function main()
 
 
     # The rest of this is just plotting 
-    
     # Pick timesteps to visualize
     plot_idxs = round.(Int, range(start=1, stop=Nt, length=4))[2:end]
     all_maps = [reshape(state[:, i], N, N) for i in vcat(1, plot_idxs)]
@@ -84,7 +83,7 @@ function main()
         row = div(k - 1, n_cols) + 1
         col = mod(k - 1, n_cols) + 1
         ax = Axis(fig[row, col], title="Timestep $(k == 1 ? 0 : plot_idxs[k-1])", xlabel="X", ylabel="Y")
-        heatmap!(ax, x, y, map; colorrange=clims)
+        CairoMakie.heatmap!(ax, x, y, map; colorrange=clims)
     end
 
     # Shared colorbar on the right
