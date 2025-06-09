@@ -27,15 +27,15 @@ end
 function Localization(xf, y, xf_dev, inn, observe_index, rho, R)
     num_states, N = size(xf) # 2500 x 50 
     num_observation = size(y, 1)
+    rhoPH = view(rho, :, observe_index)
+    rhoHPHt = view(rho, observe_index, observe_index)
 
-    rhoPH = rho[:, observe_index]
-    rhoHPHt = rho[observe_index, observe_index]
-
-    zb = xf[observe_index, :]
+    zb = view(xf, observe_index, :)
     zbm = mean(zb, dims=2) 
     Zb = (1 / sqrt(N - 1)) * (zb .- repeat(zbm, 1, N))
+    temp = LinearAlgebra.Symmetric((Zb * Zb') .+ R)
 
-    K = (rhoHPHt .* (Zb * Zb') .+ R) \ inn
+    K = (rhoHPHt .* temp) \ inn
     xf .+= rhoPH .* (xf_dev * Zb') * K
     return nothing
 end

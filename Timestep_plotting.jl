@@ -4,19 +4,20 @@ using DelimitedFiles
 function main()
     seed = 7763
     dts = [8].*0.001
-    ks = 1:10
+    ks = [8]
+    N = 196
 
     for dt in dts
         filename = "EnKF_output_$(seed)_$(dt).txt"
         input = readdlm(filename)  
-        p2 = plot(input, dt, ks)
+        p2 = plot(input, dt, ks, N)
         #savefig(p1, "Vecchia1_dt_$(dt).png")
         savefig(p2, "Vecchia2_dt_$(dt).png")
     end
     
 end
 
-function plot(input, dt, ks)
+function plot(input, dt, ks, N)
 
     # Check for zeros
     for i in 1:size(input, 1)
@@ -43,7 +44,7 @@ function plot(input, dt, ks)
     #ylims!(p2, 0.001, 1)
     ylabel!(p2, "RMSE")
     xlabel!(p2, "Time step")
-    title!(p2, "RMS 1VecchiaMLE - dt = $(dt)")
+    title!(p2, "RMS 2VecchiaMLE - dt = $(dt), N = $(N)")
     plot!(p2, legend=:outerbottom, legendcolumns=5, dpi=1000)
 
     return p2

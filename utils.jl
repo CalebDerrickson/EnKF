@@ -13,27 +13,27 @@ function gaspari_cohn(r)::Float64
 end
 
 
-function cal_rho(loc_rad::Float64, num_states::Int, f, N, Lx, Ly)::Matrix{Float64}
-
-    x = LinRange(0.0, Lx, N)
-    y = LinRange(0.0, Ly, N)
-
-    X = [x for _ in y, x in x]
-    Y = [y for y in y, _ in x]
+function cal_rho(loc_rad::Float64, num_states::Int, f, N, Lx, Ly, X::Vector{Float64}, Y::Vector{Float64})::Matrix{Float64}
+    rho = Matrix{Float64}(undef, num_states, num_states)
+    inv_loc_rad = 1.0 / loc_rad
     
-    rho = zeros(num_states, num_states)
 
-    for i in 1:num_states
-        for j in 1:num_states
-            dx = min(abs(X[i] - X[j]), Lx - abs(X[i] - X[j]))
-            dy = min(abs(Y[i] - Y[j]), Ly - abs(Y[i] - Y[j]))
+    @inbounds for i in 1:num_states
+        xi, yi = X[i], Y[i]
+        for j in i:num_states
+            dx = abs(xi - X[j])
+            dx = min(dx, Lx - dx)
+            dy = abs(yi - Y[j])
+            dy = min(dy, Ly - dy)
+
             d = sqrt(dx^2 + dy^2)
-
-            rad = d * (1.0 / loc_rad)
-            rho[i, j] = f(rad)
+            rad = d * inv_loc_rad
+            val = f(rad)
+            rho[i, j] = val
+            rho[j, i] = val
         end
     end
-    return rho
+    return sparse(LinearAlgebra.Symmetric(rho, :U))
 end
 
 struct ADParams

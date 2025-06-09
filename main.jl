@@ -9,17 +9,19 @@ using VecchiaMLE
 function main()
     seed = 7763
     Random.seed!(seed)
-    T = 2.0
+    T = 1.0
     dts = [8].*0.001
     Nts = [Int(T / dt) for dt in dts]
-    ks = 1:10
+    ks = 8:12
     OdeMethod::ODEMethod = Integro
 
     for i in 1:length(Nts)
         
         line = DoAnalysis(Nts[i], localization, ks[1], dts[i], seed, OdeMethod)
         writetofile(seed, dts[i], view(line, 1:Nts[i]))
-               
+        GC.gc() # okay to run gc here? 
+
+        
         #for k in ks
         #   line = DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed, OdeMethod)
         #   writetofile(seed, dts[i], view(line, 1:Nts[i]))
@@ -28,16 +30,17 @@ function main()
         for k in ks
             line = DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed, OdeMethod)
             writetofile(seed, dts[i], view(line, 1:Nts[i]))
+            GC.gc() # okay to run gc here? 
         end
 
-        GC.gc() # okay to run gc here? 
     end
     
 end
 
 function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=ForwardEuler)
     # Grid and physical setup
-    N = 50
+    N = 196
+    num_states = N*N
 
     GridLen = max(0.2 * N, 10.0)
     Lx = Ly = GridLen 
@@ -54,6 +57,8 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=Forwa
     X = [x for _ in y, x in x]
     Y = [y for y in y, _ in x]
     XYGrid = [X[:], Y[:]]
+    X = Vector{Float64}(reshape(X', num_states))
+    Y = Vector{Float64}(reshape(Y', num_states))
 
     # Initial truth
     centers = [Lx / 2, Ly / 2]
@@ -94,8 +99,10 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=Forwa
 
     # Covariance localization
     infl = 1.01
-    localization_radius = 0.3
-    rho = cal_rho(localization_radius, N*N, gaspari_cohn, N, Lx, Ly)
+    if strat == localization
+        localization_radius = 0.3
+        rho = cal_rho(localization_radius, N*N, gaspari_cohn, N, Lx, Ly, X, Y)
+    end
     PATTERN_CACHE = PatternCache(nothing, nothing)
 
 
@@ -108,7 +115,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=Forwa
         end
 
         # Propagate ensembles
-        for j = 1:N
+        for j = 1:Ne
             if OdeMethod == ForwardEuler
                 temp = forward_euler(xf[:, j], N, dx, dy, dt, cx, cy, nu)
                 xf[:, j] .= reshape(temp, N*N, 1)
@@ -122,7 +129,11 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=Forwa
         y = reshape(u, N*N, 1)[observe_index, :]
         
         # Do the EnKF analysis, updates xf
-        BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, strat, k, PATTERN_CACHE)
+        if strat == localization
+            BabyKF(xf, y, H, R, infl, rho, ptGrid, observe_index, strat, k, PATTERN_CACHE)
+        else
+            BabyKF(xf, y, H, R, infl, 0.0, ptGrid, observe_index, strat, k, PATTERN_CACHE)
+        end
 
         temp_analysis_mean = mean(xf, dims=2)
     
