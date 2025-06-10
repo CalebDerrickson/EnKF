@@ -9,29 +9,30 @@ using VecchiaMLE
 function main()
     seed = 7763
     Random.seed!(seed)
-    T = 1.0
+    T = 2.0
     dts = [8].*0.001
     Nts = [Int(T / dt) for dt in dts]
-    ks = 8:12
+    ks = [8]
     OdeMethod::ODEMethod = Integro
 
     for i in 1:length(Nts)
         
-        line = DoAnalysis(Nts[i], localization, ks[1], dts[i], seed, OdeMethod)
-        writetofile(seed, dts[i], view(line, 1:Nts[i]))
-        GC.gc() # okay to run gc here? 
+        # line = DoAnalysis(Nts[i], localization, ks[1], dts[i], seed, OdeMethod)
+        # writetofile(seed, dts[i], view(line, 1:Nts[i]))
+        # GC.gc() # okay to run gc here? 
 
         
-        #for k in ks
-        #   line = DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed, OdeMethod)
-        #   writetofile(seed, dts[i], view(line, 1:Nts[i]))
-        #end
-
         for k in ks
-            line = DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed, OdeMethod)
-            writetofile(seed, dts[i], view(line, 1:Nts[i]))
-            GC.gc() # okay to run gc here? 
+          line = DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed, OdeMethod)
+          writetofile(seed, dts[i], view(line, 1:Nts[i]))
+           GC.gc() # okay to run gc here? 
         end
+
+        # for k in ks
+            # line = DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed, OdeMethod)
+            # writetofile(seed, dts[i], view(line, 1:Nts[i]))
+            # GC.gc() # okay to run gc here? 
+        # end
 
     end
     
@@ -39,7 +40,7 @@ end
 
 function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=ForwardEuler)
     # Grid and physical setup
-    N = 196
+    N = 50
     num_states = N*N
 
     GridLen = max(0.2 * N, 10.0)

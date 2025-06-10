@@ -85,12 +85,28 @@ function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
     #xf .+= rep * ((view(rep, observe_index, :).+R) \ inn)
 
     # The below code is Phil's idea (SMW)
-    # K = Rₖ⁻²[R - Z( (N-1)I + ZᵀRₖ⁻¹Z )⁻¹Zᵀ]
+    # K = Rₖ⁻¹[I - Z( (N-1)I + ZᵀRₖ⁻¹Z )⁻¹ZᵀRₖ⁻¹]
     # Z = HₖX
 
-    Z = view(xf_mat, :, observe_index)
-    K = (L' \ (L \ H')) * (R^2 \ (R .- (Z' * ((Z * (R \ Z') + (Ne-1)*I) \ Z))))
-    K ./= (Ne-1)
+    Z = view(xf_mat, :, observe_index)'
+    
+    K = L' \ (L \ H') 
+    K .= K / R
+
+    inv_part = Z'
+    # println("inv_part ", size(inv_part))
+    # println("R ", size(R))
+    inv_part = (inv_part / R ) * inv_part'
+    inv_part += (Ne - 1)I
+
+    println("inv_part ", size(inv_part))
+    println("Z ", size(Z))
+    outer = I - Z * (inv_part \ Z') * Z'
+    println("outer ", size(outer))
+    println("R ", size(R))
+    
+    outer = outer / R
+    K = K * outer
 
     # Next perform update
     xf .+= K * inn 
