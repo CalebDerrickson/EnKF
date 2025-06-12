@@ -3,7 +3,7 @@ function BabyKF(xf, y, H, R, infl, rho, ptGrid::AbstractVector, observe_index::A
     num_observation = size(y, 1)
 
     # Add noise to observation
-    y_perturbed = repeat(y, 1, N) + sqrt.(R) * randn(num_observation, N)
+    y_perturbed = repeat(y, 1, N) .+ sqrt.(R) * randn(num_observation, N)
 
     # Add inflation
     xfm = mean(xf, dims=2)
@@ -85,27 +85,19 @@ function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
     #xf .+= rep * ((view(rep, observe_index, :).+R) \ inn)
 
     # The below code is Phil's idea (SMW)
-    # K = Rₖ⁻¹[I - Z( (N-1)I + ZᵀRₖ⁻¹Z )⁻¹ZᵀRₖ⁻¹]
+    # K = BₖHₖᵀRₖ⁻²[R - Z( (N-1)I + ZᵀRₖ⁻¹Z )⁻¹Zᵀ]
     # Z = HₖX
 
     Z = view(xf_mat, :, observe_index)'
     
     K = L' \ (L \ H') 
-    K .= K / R
+    K .= K / (R.^2)
 
-    inv_part = Z'
-    # println("inv_part ", size(inv_part))
-    # println("R ", size(R))
-    inv_part = (inv_part / R ) * inv_part'
-    inv_part += (Ne - 1)I
+    inv_part = Z
+    inv_part = (inv_part' / R ) * inv_part
+    view(inv_part, diagind(inv_part)) .+= Ne-1
+    outer = R .- Z * (inv_part \ Z')
 
-    println("inv_part ", size(inv_part))
-    println("Z ", size(Z))
-    outer = I - Z * (inv_part \ Z') * Z'
-    println("outer ", size(outer))
-    println("R ", size(R))
-    
-    outer = outer / R
     K = K * outer
 
     # Next perform update

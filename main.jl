@@ -9,10 +9,10 @@ using VecchiaMLE
 function main()
     seed = 7763
     Random.seed!(seed)
-    T = 2.0
+    T = 1.0
     dts = [8].*0.001
     Nts = [Int(T / dt) for dt in dts]
-    ks = [8]
+    ks = 1:10
     OdeMethod::ODEMethod = Integro
 
     for i in 1:length(Nts)
@@ -63,7 +63,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=Forwa
 
     # Initial truth
     centers = [Lx / 2, Ly / 2]
-    u = exp.(-100 .* ((X .- centers[1]).^2 .+ (Y .- centers[2]).^2))
+    u = exp.(-100.0 .* ((X .- centers[1]).^2 .+ (Y .- centers[2]).^2))
 
     # Initial ensemble
     Ne = 100  # ensemble size
@@ -83,8 +83,10 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=Forwa
     #observe_index = sort(sample(1:N*N, Int(0.25*N*N); replace=false))
     observe_index = vec( reshape(1:N*N, N, N)[1:2:end, 1:2:end] )
 
-    # sigma is very important for 1Vecchia. 
-    sigma = 0.25
+    # sigma is very important for 1Vecchia. Only really tested for ForwardEuler.
+    # Blows up for small values, like 0.25. Decent value is 3.125.
+    # numerical instability? Size of the grid? Sharpness of the initial truth?
+    sigma = 3.125
     R = Diagonal(fill(sigma^2, length(observe_index)))
     H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
 
