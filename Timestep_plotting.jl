@@ -4,7 +4,7 @@ using DelimitedFiles
 function main()
     seed = 7763
     dts = [8].*0.001
-    ks = [8]
+    ks = 8:10
     N = 196
 
     for dt in dts
@@ -40,7 +40,7 @@ function plot(input, dt, ks, N)
 
         i+=1
     end
-    plot!(p2, yscale=:log10, minorgrid=true)
+    plot!(p2, minorgrid=true)
     #ylims!(p2, 0.001, 1)
     ylabel!(p2, "RMSE")
     xlabel!(p2, "Time step")

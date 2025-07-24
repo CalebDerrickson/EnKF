@@ -11,17 +11,25 @@ function main()
     T = 1.0
     dts = [8].*0.001
     Nts = [Int(T / dt) for dt in dts]
-    ks = 4:10
-    OdeMethod::ODEMethod = ForwardEuler
+    ks = 8:12
+    OdeMethod::ODEMethod = Integro
 
     for i in 1:length(Nts)
         
-        # line = DoAnalysis(Nts[i], localization, ks[1], dts[i], seed, OdeMethod)
-        # writetofile(seed, dts[i], view(line, 1:Nts[i]))
+        line = DoAnalysis(Nts[i], localization, ks[1], dts[i], seed, OdeMethod)
+        writetofile(seed, dts[i], view(line, 1:Nts[i]))
+        GC.gc() # okay to run gc here? 
+
         
+        #for k in ks
+        #   line = DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed, OdeMethod)
+        #   writetofile(seed, dts[i], view(line, 1:Nts[i]))
+        #end
+
         for k in ks
-          line = DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed, OdeMethod)
-          writetofile(seed, dts[i], view(line, 1:Nts[i]))
+            line = DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed, OdeMethod)
+            writetofile(seed, dts[i], view(line, 1:Nts[i]))
+            GC.gc() # okay to run gc here? 
         end
 
         # for k in ks
@@ -59,7 +67,7 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=Forwa
 
     # Initial truth
     centers = [Lx / 2, Ly / 2]
-    u = exp.(-100 .* ((X .- centers[1]).^2 .+ (Y .- centers[2]).^2))
+    u = exp.(-100.0 .* ((X .- centers[1]).^2 .+ (Y .- centers[2]).^2))
 
     # Initial ensemble
     Ne = 100  # ensemble size
