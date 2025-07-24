@@ -2,7 +2,6 @@ using Plots
 using Random
 using DelimitedFiles
 using LinearAlgebra
-using PProf
 using VecchiaMLE
 
 
@@ -12,26 +11,24 @@ function main()
     T = 1.0
     dts = [8].*0.001
     Nts = [Int(T / dt) for dt in dts]
-    ks = 8:12
-    OdeMethod::ODEMethod = Integro
+    ks = 4:10
+    OdeMethod::ODEMethod = ForwardEuler
 
     for i in 1:length(Nts)
         
-        line = DoAnalysis(Nts[i], localization, ks[1], dts[i], seed, OdeMethod)
-        writetofile(seed, dts[i], view(line, 1:Nts[i]))
-        GC.gc() # okay to run gc here? 
-
+        # line = DoAnalysis(Nts[i], localization, ks[1], dts[i], seed, OdeMethod)
+        # writetofile(seed, dts[i], view(line, 1:Nts[i]))
         
-        #for k in ks
-        #   line = DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed, OdeMethod)
-        #   writetofile(seed, dts[i], view(line, 1:Nts[i]))
-        #end
-
         for k in ks
-            line = DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed, OdeMethod)
-            writetofile(seed, dts[i], view(line, 1:Nts[i]))
-            GC.gc() # okay to run gc here? 
+          line = DoAnalysis(Nts[i], OneVecchia, k, dts[i], seed, OdeMethod)
+          writetofile(seed, dts[i], view(line, 1:Nts[i]))
         end
+
+        # for k in ks
+            # line = DoAnalysis(Nts[i], TwoVecchia, k, dts[i], seed, OdeMethod)
+            # writetofile(seed, dts[i], view(line, 1:Nts[i]))
+            # GC.gc() # okay to run gc here? 
+        # end
 
     end
     
@@ -39,7 +36,7 @@ end
 
 function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=ForwardEuler)
     # Grid and physical setup
-    N = 196
+    N = 50
     num_states = N*N
 
     GridLen = max(0.2 * N, 10.0)
@@ -67,15 +64,15 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=Forwa
     # Initial ensemble
     Ne = 100  # ensemble size
     
-    c_ensemble_idx = shuffle(1:N*N)   
+    c_ensemble_idx = shuffle(1:num_states)   
     c_ensemble = [[XYGrid[1][i], XYGrid[2][i]] for i in c_ensemble_idx]   
     ptGrid = c_ensemble
 
 
     # params = [σ, ρ, ν]
     params = [1.0, 0.8, 2.25]
-    MatCov = VecchiaMLE.generate_MatCov(N, params, ptGrid)
-    xf = Matrix{Float64}(VecchiaMLE.generate_Samples(MatCov, N, Ne)')
+    MatCov = VecchiaMLE.generate_MatCov(params, ptGrid)
+    xf = Matrix{Float64}(VecchiaMLE.generate_Samples(MatCov, Ne)')
     xf .+= repeat(reshape(u, N*N, 1), 1, Ne)
 
     # Observations
@@ -83,14 +80,14 @@ function DoAnalysis(Nt, strat::Strategy, k, dt, seed, OdeMethod::ODEMethod=Forwa
     observe_index = vec( reshape(1:N*N, N, N)[1:2:end, 1:2:end] )
 
     # sigma is very important for 1Vecchia. 
-    sigma = 0.25
+    sigma = 0.1
     R = Diagonal(fill(sigma^2, length(observe_index)))
     H = view(Matrix{Float64}(I, N*N, N*N), observe_index, :)
 
     # kernel matrix K(x, y)
     if OdeMethod == Integro
         params = [1.0, 0.8, 2.5]
-        kernel = Matrix{Float64}(VecchiaMLE.generate_MatCov(N, params, ptGrid))
+        kernel = Matrix{Float64}(VecchiaMLE.generate_MatCov(params, ptGrid))
         for i in 1:size(kernel, 1)
             kernel[i, :] ./= sum(kernel[i, :])
         end

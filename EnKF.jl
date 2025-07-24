@@ -8,5 +8,3 @@ include("BabyKF.jl")
 include("forward_euler.jl")
 include("integro.jl")
 include("main.jl")
-
-main()

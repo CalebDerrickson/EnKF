@@ -61,46 +61,46 @@ function OneVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
     xfm = mean(xf_mat, dims = 1) # mean by col. 
     xf_mat .-= repeat(xfm, Ne, 1)
 
-    
-    n = Int(sqrt(size(xf_mat, 2)))
+    n = num_states
     if PATTERN_CACHE.L === nothing
-        input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true)
+        input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true) #sparsityGeneration=VecchiaMLE.HNSW)
     else
         input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true,
             rowsL = PATTERN_CACHE.L.rowval,
             colsL = PATTERN_CACHE.L.colval,
-            colptrL = PATTERN_CACHE.L.colptr
+            colptrL = PATTERN_CACHE.L.colptr,
+            #sparsityGeneration = VecchiaMLE.HNSW
         )
     end
-
-    L = VecchiaMLE_Run(input)[2]
+    d, L = VecchiaMLE_Run(input)
+    VecchiaMLE.print_diagnostics(d)
 
     if PATTERN_CACHE.L === nothing
         cache_pattern!(L, :L, PATTERN_CACHE)
     end
 
 
-    # The below code is straight Kalman Filter. 
-    #rep = L' \ (L \ H')
-    #xf .+= rep * ((view(rep, observe_index, :).+R) \ inn)
-
     # The below code is Phil's idea (SMW)
-    # K = Rₖ⁻²[R - Z( (N-1)I + ZᵀRₖ⁻¹Z )⁻¹Zᵀ]
-    # Z = HₖX
+    # K = BₖHₖᵀRₖ⁻¹[I - Z(ZᵀRₖ⁻¹Z + I)⁻¹ZᵀRₖ⁻¹]
+    # Z = 1 / √(N-1) * HₖX
 
-    Z = view(xf_mat, :, observe_index)
-    K = (L' \ (L \ H')) * (R^2 \ (R .- (Z' * ((Z * (R \ Z') + (Ne-1)*I) \ Z))))
-    K ./= (Ne-1)
+    Z = (1 / sqrt(Ne - 1)) .* view(xf_mat, :, observe_index)'
+
+    inv_term = Z' * (R \ Z) + I
+    middle = I - Z * (inv_term \ (Z' / R))
+
+    K = L' \ (L \ H') * (R \ middle)
 
     # Next perform update
-    xf .+= K * inn 
-
+    xf .+= (1 / (Ne-1)) .* K * inn
+    
+    
     return
 end
 
 
 function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k, PATTERN_CACHE)
-    _, Ne = size(xf)
+    num_states, Ne = size(xf)
     num_observation = size(y, 1)
 
     # Have to transpose them since that's how VecciaMLE parses them. 
@@ -108,7 +108,7 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
     xfm = mean(xf_mat, dims = 1) # mean by col. 
     xf_mat .-= repeat(xfm, Ne, 1)
     
-    n = Int(sqrt(size(xf_mat, 2)))
+    n = num_states
     
     if PATTERN_CACHE.L === nothing
         input = VecchiaMLEInput(n, k, xf_mat, Ne, 5, 1; ptGrid=ptGrid, skip_check=true)
@@ -136,7 +136,7 @@ function TwoVecchiaEnKF(xf, y, xf_dev, inn, observe_index, rho, R, ptGrid, H, k,
     
     chol .+= R_half_Z'
     subptGrid = ptGrid[observe_index]
-    n = Int(sqrt(size(chol, 2)))
+    n = length(observe_index)
 
     samples =  randn(Ne, Ne) * chol
 
